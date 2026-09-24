@@ -1,0 +1,38 @@
+name: transit
+description: "College transport platform: student, driver and transport-office app."
+publish_to: 'none'
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.13.4
+
+dependencies:
+  dio: ^5.11.1
+  flutter:
+    sdk: flutter
+  flutter_riverpod: ^3.4.3
+  go_router: ^18.0.1
+  intl: ^0.20.3
+  mobile_scanner: ^7.4.2
+  qr_flutter: ^4.1.0
+  shared_preferences: ^2.5.5
+  wakelock_plus: ^1.8.0
+  web_socket_channel: ^3.0.3
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+  fonts:
+    # Overpass (SIL OFL 1.1), derived from Highway Gothic, the road-sign typeface.
+    - family: Overpass
+      fonts:
+        - asset: assets/fonts/Overpass-400.ttf
+          weight: 400
+        - asset: assets/fonts/Overpass-600.ttf
+          weight: 600
+        - asset: assets/fonts/Overpass-800.ttf
+          weight: 800
