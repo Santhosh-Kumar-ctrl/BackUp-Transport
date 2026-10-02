@@ -36,6 +36,16 @@ class Settings(BaseSettings):
     allow_simulation: bool = True
     enable_background_tasks: bool = True
 
+    # Student reports: the triage agent runs on a local Ollama model. "rules" skips the model
+    # (keyword rules and templates; tests use it). Ollama being down also falls back to rules.
+    report_ai: str = "ollama"  # ollama | rules
+    ollama_url: str = "http://localhost:11434"
+    ollama_model: str = "qwen3:4b"
+    ollama_embed_model: str = "nomic-embed-text"  # lost-and-found matching
+    ollama_timeout_seconds: float = 120  # the first call after a while also loads the model (~1 min)
+    report_speed_limit_kmph: int = 60  # GPS readings above this support an unsafe-driving report
+    report_lookback_days: int = 3  # trips a report can be about; found items a lost item can match
+
     cors_origins: str = "*"
 
     @property

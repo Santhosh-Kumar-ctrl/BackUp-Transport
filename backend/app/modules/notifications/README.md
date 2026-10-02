@@ -21,6 +21,9 @@
 | `UnallocatedBoarding` | | ✓ | ✓ |
 | `StudentAllocated` / `AllocationChanged` / `AllocationEnded` | that student | | |
 | `BusDriverAssigned` | | new driver ("You're now driving bus …") and previous driver | |
+| `ReportAnalysed` (reports, first analysis only) | | | ✓ severity from the report: critical / high → warning / info |
+| `ReportFollowUp` | | | ✓ |
+| `ReportReplied` / `ReportClosed` / `LostItemMatched` | the student who sent the report (looked up via `reports.service.recipient_id`; payloads carry no student id) | | |
 
 Severity: `info` / `warning` / `critical` (delays ≥ 15 min and over-capacity are critical).
 

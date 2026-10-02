@@ -19,6 +19,7 @@ from app.modules.master_data import service as md_service
 from app.modules.master_data.models import Stop
 from app.modules.notifications.models import Notification, Severity
 from app.modules.notifications.schemas import Message, NotificationOut
+from app.modules.reports import service as reports_service
 from app.modules.trips import service as trips_service
 from app.modules.trips.models import Direction, TripStatus
 
@@ -245,11 +246,47 @@ async def messages_for(session: AsyncSession, ev: Event) -> list[Message]:
         return [Message(user_ids=[p["student_id"]], type=t, severity=Severity.INFO,
                         title="Your bus allocation has ended",
                         body=f"You're no longer allocated to route {code}.", payload=base)]
+
+    # ---- Student reports: payloads carry no student id; the reports module looks it up ----
+    report_payload = {"report_id": p.get("report_id"), "trip_id": p.get("trip_id")}
+    if t == "ReportAnalysed":
+        if not p.get("first"):
+            return []  # a re-check doesn't need another alert
+        level = {"critical": Severity.CRITICAL, "high": Severity.WARNING}.get(p["severity"], Severity.INFO)
+        return [Message(user_ids=admins, type=t, severity=level,
+                        title=f"New {_REPORT_KIND.get(p['kind'], 'problem')} report",
+                        body=_cut(p.get("summary") or "", 500), payload=report_payload)]
+
+    if t == "ReportFollowUp":
+        return [Message(user_ids=admins, type=t, severity=Severity.INFO,
+                        title="A student followed up on a report", body="Open Issues to read it.",
+                        payload=report_payload)]
+
+    if t in ("ReportReplied", "ReportClosed", "LostItemMatched"):
+        student = await reports_service.recipient_id(session, p["report_id"])
+        if t == "ReportReplied":
+            title, body = "The transport office replied to your report", p["body"]
+        elif t == "ReportClosed":
+            title, body = "Your report was closed", p.get("note") or "Thanks for letting us know."
+        else:
+            title = "We may have found your item"
+            body = f"Logged as found: \"{p['description']}\". Collect it from the transport office."
+        return [Message(user_ids=[student], type=t, severity=Severity.INFO, title=title, body=_cut(body, 500),
+                        payload=report_payload)]
     return []
+
+
+_REPORT_KIND = {"lateness": "late bus", "overcrowding": "overcrowding", "safety": "safety",
+                "lost_item": "lost item", "other": "problem"}
+
+
+def _cut(text: str, n: int) -> str:
+    return text if len(text) <= n else text[: n - 1].rstrip() + "…"
 
 
 HANDLED_EVENTS = [
     "TripDelayed", "TripDelayResolved", "TripStarted", "TripCancelled", "BusApproaching",
     "CapacityWarning", "OverCapacity", "UnallocatedBoarding",
     "StudentAllocated", "AllocationChanged", "AllocationEnded", "BusDriverAssigned",
+    "ReportAnalysed", "ReportFollowUp", "ReportReplied", "ReportClosed", "LostItemMatched",
 ]

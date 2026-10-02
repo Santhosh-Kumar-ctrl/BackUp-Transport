@@ -27,13 +27,14 @@ from app.modules import (
     history,
     master_data,
     notifications,
+    reports,
     tracking,
     trips,
 )
 
 MODULES = [
     auth, master_data, trips, tracking, allocation, boarding,
-    capacity, delay_monitor, notifications, history, dashboard,
+    capacity, delay_monitor, notifications, history, dashboard, reports,
 ]
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")

@@ -8,6 +8,7 @@ os.environ["DATABASE_URL"] = os.environ.get(
 )
 os.environ["ENABLE_BACKGROUND_TASKS"] = "false"
 os.environ["BCRYPT_ROUNDS"] = "4"
+os.environ["REPORT_AI"] = "rules"  # never call a real model from tests
 
 from datetime import datetime, time, timedelta  # noqa: E402
 from itertools import count  # noqa: E402

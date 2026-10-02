@@ -4,9 +4,9 @@ One app, three role areas chosen at login:
 
 | Role | Area | Home |
 |---|---|---|
-| student | `/student` | My line: next bus at my stop, live line diagram, **Scan to board** |
-| driver | `/driver` | Today's runs, then the run screen (ARRIVED per stop, boarding QR, riders, running late) |
-| admin | `/admin` | Live departure board, network, fleet, people, allocation, schedules, reports |
+| student | `/student` | My line: next bus at my stop, live line diagram, **Scan to board**; **Reports**: report a problem, follow the reply |
+| driver | `/driver` | Today's runs, then the run screen (ARRIVED per stop, boarding QR, riders, running late, found item) |
+| admin | `/admin` | Live departure board, network, fleet, people, allocation, schedules, reports, **Issues** (student reports with the agent's evidence, found items) |
 
 ## Run
 ```bash
