@@ -31,8 +31,7 @@ import 'shell/role_shells.dart';
 String homeFor(Role role) => switch (role) {
   Role.student => '/student',
   Role.driver => '/driver',
-  Role.admin || Role.security => '/admin',
-  Role.parent => '/parent',
+  Role.admin => '/admin',
 };
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -90,7 +89,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (_, s) => DriverRosterScreen(tripId: id(s)),
       ),
 
-      // ---- Transport office (admin + security) ----
+      // ---- Transport office (admin) ----
       ShellRoute(
         builder: (_, state, child) => AdminShell(location: state.matchedLocation, child: child),
         routes: [
@@ -109,9 +108,6 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(path: '/admin/alerts', builder: (_, _) => const InboxScreen()),
         ],
       ),
-
-      // ---- Parent (role exists; screens are P1) ----
-      GoRoute(path: '/parent', builder: (_, _) => const _ParentComingSoon()),
     ],
   );
 });
@@ -128,25 +124,4 @@ class TransitApp extends ConsumerWidget {
       routerConfig: ref.watch(routerProvider),
     );
   }
-}
-
-class _ParentComingSoon extends ConsumerWidget {
-  const _ParentComingSoon();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) => Scaffold(
-    body: Column(
-      children: [
-        const SignHeader(title: 'Parent view'),
-        SignNotice(
-          title: "Parent access isn't open yet",
-          body:
-              "You'll be able to follow your child's bus and attendance here. Until then, "
-              'the transport office can answer questions.',
-          actionLabel: 'Sign out',
-          onAction: () => ref.read(sessionProvider.notifier).logout(),
-        ),
-      ],
-    ),
-  );
 }

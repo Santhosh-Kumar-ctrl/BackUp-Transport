@@ -9,7 +9,7 @@ from app.modules.capacity.schemas import RouteUtilization, TripOccupancy
 from app.modules.trips import service as trips_service
 
 router = APIRouter(prefix="/capacity", tags=["capacity"])
-staff = require_roles(Role.ADMIN, Role.SECURITY)
+admin_only = require_roles(Role.ADMIN)
 
 
 @router.get("/trips/{trip_id}", response_model=TripOccupancy)
@@ -19,10 +19,10 @@ async def trip_occupancy(trip_id: int, _: Principal = Depends(current_principal)
 
 
 @router.get("/active", response_model=list[TripOccupancy])
-async def active(_: Principal = Depends(staff), session: AsyncSession = Depends(get_session)):
+async def active(_: Principal = Depends(admin_only), session: AsyncSession = Depends(get_session)):
     return await service.active_occupancy(session)
 
 
 @router.get("/routes", response_model=list[RouteUtilization])
-async def routes(_: Principal = Depends(staff), session: AsyncSession = Depends(get_session)):
+async def routes(_: Principal = Depends(admin_only), session: AsyncSession = Depends(get_session)):
     return await service.route_utilization(session)

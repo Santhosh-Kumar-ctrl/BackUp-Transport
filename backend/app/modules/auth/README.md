@@ -10,9 +10,8 @@
 | **Status** | P0 done |
 
 ## Responsibilities
-- User accounts with one role each: `student`, `driver`, `admin`, `security`, `parent`
-  (security/parent have the role but no screens yet: P1).
-- Student profile (roll no, department, year, optional parent link) and driver profile (licence).
+- User accounts with one role each: `student`, `driver`, `admin`.
+- Student profile (roll no, department, year) and driver profile (licence).
 - JWT login: short-lived access token (`ACCESS_TOKEN_MINUTES`) + refresh token (`REFRESH_TOKEN_DAYS`).
 - Admin-only user management. There's no self sign-up: the transport office creates accounts.
 
@@ -22,7 +21,7 @@ Not here: route/stop assignment (allocation), driver-to-bus assignment (trips sc
 | Table | Key columns |
 |---|---|
 | `users` | `email` (unique, lower-cased), `password_hash` (bcrypt), `full_name`, `phone`, `role`, `is_active` |
-| `student_profiles` | `user_id` PK/FK, `roll_no` (unique), `department`, `year`, `parent_user_id` |
+| `student_profiles` | `user_id` PK/FK, `roll_no` (unique), `department`, `year` |
 | `driver_profiles` | `user_id` PK/FK, `license_no` (unique), `license_expiry` |
 
 ## API
@@ -65,6 +64,4 @@ cd backend && .venv/Scripts/python -m pytest app/modules/auth -q
 ```
 
 ## Extension notes
-- Parent view: `student_profiles.parent_user_id` already exists. A parent endpoint can list
-  their children's allocation, today's trips and attendance.
 - SSO/OTP can replace `/auth/login` without touching other modules (they only see `Principal`).

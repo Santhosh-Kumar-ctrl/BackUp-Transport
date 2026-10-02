@@ -11,7 +11,7 @@ router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 
 
 @router.get("/admin", response_model=AdminDashboard)
-async def admin(_: Principal = Depends(require_roles(Role.ADMIN, Role.SECURITY)),
+async def admin(_: Principal = Depends(require_roles(Role.ADMIN)),
                 session: AsyncSession = Depends(get_session)):
     return await service.admin(session)
 

@@ -1,0 +1,264 @@
+// Transit: college transport platform. Database design (PostgreSQL 16).
+// Generated from the live schema at Alembic head 9d3e5b7c1a2f. Paste into an Eraser
+// "Entity Relationship" diagram. Colours show the module that owns (writes) each table.
+//
+// Allowed values of the string status columns (CHECK constraints):
+//   users.role: student | driver | admin
+//   buses.status: active | maintenance | retired
+//   trips.status: scheduled | in_progress | completed | cancelled
+//   trips.direction, trip_schedules.direction: pickup | drop
+//   allocations.status: active | ended
+//   boardings.method: qr | manual
+//   attendance_records.status: present | absent | present_unallocated
+//   delay_reports.source: start | stop_arrival | overdue | not_started | manual | recovered
+//   notifications.severity: info | warning | critical
+// domain_events has no foreign keys on purpose: it is an append-only log of every event,
+// pointing at any table through aggregate_type + aggregate_id.
+// Labels: pk = primary key, fk = foreign key, unique = no two rows share the value.
+
+notation crows-feet
+
+// ---------- auth ----------
+users [icon: user, color: blue] {
+  id int pk
+  email string unique
+  password_hash string
+  full_name string
+  phone string
+  role string
+  is_active boolean
+  created_at timestamp
+  updated_at timestamp
+}
+
+student_profiles [icon: user, color: blue] {
+  user_id int pk fk
+  roll_no string unique
+  department string
+  year smallint
+}
+
+driver_profiles [icon: user, color: blue] {
+  user_id int pk fk
+  license_no string unique
+  license_expiry date
+}
+
+// ---------- master_data ----------
+buses [icon: map, color: green] {
+  id int pk
+  registration_no string unique
+  capacity smallint
+  model string
+  status string
+  created_at timestamp
+  updated_at timestamp
+  driver_id int fk unique
+}
+
+stops [icon: map, color: green] {
+  id int pk
+  name string
+  landmark string
+  latitude float
+  longitude float
+  created_at timestamp
+  updated_at timestamp
+}
+
+routes [icon: map, color: green] {
+  id int pk
+  code string unique
+  name string
+  color string
+  description string
+  is_active boolean
+  created_at timestamp
+  updated_at timestamp
+}
+
+route_stops [icon: map, color: green] {
+  id int pk
+  route_id int fk
+  stop_id int fk
+  sequence smallint
+  offset_min smallint
+}
+
+// ---------- trips ----------
+trip_schedules [icon: calendar, color: orange] {
+  id int pk
+  route_id int fk
+  bus_id int fk
+  driver_id int fk
+  direction string
+  departure_time time
+  days_of_week smallint[]
+  is_active boolean
+  created_at timestamp
+  updated_at timestamp
+}
+
+trips [icon: calendar, color: orange] {
+  id int pk
+  schedule_id int fk
+  route_id int fk
+  bus_id int fk
+  driver_id int fk
+  direction string
+  service_date date
+  scheduled_departure timestamp
+  status string
+  started_at timestamp
+  ended_at timestamp
+  current_delay_min smallint
+  cancel_reason string
+  created_at timestamp
+  updated_at timestamp
+}
+
+trip_stop_events [icon: calendar, color: orange] {
+  id int pk
+  trip_id int fk
+  route_stop_id int fk
+  stop_id int fk
+  stop_name string
+  sequence smallint
+  scheduled_at timestamp
+  arrived_at timestamp
+  delay_min smallint
+}
+
+// ---------- tracking ----------
+bus_positions [icon: navigation, color: purple] {
+  id int pk
+  trip_id int fk
+  bus_id int fk
+  latitude float
+  longitude float
+  speed_kmph float
+  recorded_at timestamp
+  heading_deg float
+  accuracy_m float
+}
+
+approach_alerts [icon: navigation, color: purple] {
+  id int pk
+  trip_id int fk
+  stop_id int fk
+  sequence smallint
+  distance_m int
+  created_at timestamp
+}
+
+// ---------- allocation ----------
+allocations [icon: map-pin, color: yellow] {
+  id int pk
+  student_id int fk
+  route_id int fk
+  route_stop_id int fk
+  stop_id int fk
+  status string
+  valid_from date
+  ended_at timestamp
+  end_reason string
+  created_by int fk
+  created_at timestamp
+  updated_at timestamp
+}
+
+// ---------- boarding ----------
+boardings [icon: check-square, color: red] {
+  id int pk
+  trip_id int fk
+  student_id int fk
+  stop_id int fk
+  method string
+  allocation_match boolean
+  boarded_at timestamp
+  recorded_by int fk
+}
+
+attendance_records [icon: check-square, color: red] {
+  id int pk
+  trip_id int fk
+  student_id int fk
+  route_id int fk
+  service_date date
+  status string
+  boarding_id int fk
+}
+
+// ---------- delay_monitor ----------
+delay_reports [icon: clock, color: pink] {
+  id int pk
+  trip_id int fk
+  source string
+  delay_min smallint
+  at_sequence smallint
+  reason string
+  reported_by int fk
+  created_at timestamp
+}
+
+// ---------- notifications ----------
+notifications [icon: bell, color: lightblue] {
+  id bigint pk
+  user_id int fk
+  type string
+  title string
+  body string
+  severity string
+  payload json
+  read_at timestamp
+  created_at timestamp
+}
+
+// ---------- core ----------
+domain_events [icon: activity, color: gray] {
+  id bigint pk
+  type string
+  aggregate_type string
+  aggregate_id int
+  actor_id int
+  payload json
+  occurred_at timestamp
+}
+
+// ---------- relationships ----------
+// >  many-to-one     -  one-to-one
+driver_profiles.user_id - users.id
+student_profiles.user_id - users.id
+buses.driver_id - users.id
+route_stops.route_id > routes.id
+route_stops.stop_id > stops.id
+trip_schedules.bus_id > buses.id
+trip_schedules.driver_id > users.id
+trip_schedules.route_id > routes.id
+trip_stop_events.route_stop_id > route_stops.id
+trip_stop_events.stop_id > stops.id
+trip_stop_events.trip_id > trips.id
+trips.bus_id > buses.id
+trips.driver_id > users.id
+trips.route_id > routes.id
+trips.schedule_id > trip_schedules.id
+approach_alerts.stop_id > stops.id
+approach_alerts.trip_id > trips.id
+bus_positions.bus_id > buses.id
+bus_positions.trip_id > trips.id
+allocations.created_by > users.id
+allocations.route_id > routes.id
+allocations.route_stop_id > route_stops.id
+allocations.stop_id > stops.id
+allocations.student_id > users.id
+attendance_records.boarding_id > boardings.id
+attendance_records.route_id > routes.id
+attendance_records.student_id > users.id
+attendance_records.trip_id > trips.id
+boardings.recorded_by > users.id
+boardings.stop_id > stops.id
+boardings.student_id > users.id
+boardings.trip_id > trips.id
+delay_reports.reported_by > users.id
+delay_reports.trip_id > trips.id
+notifications.user_id > users.id

@@ -39,7 +39,7 @@ The latest row per trip is that trip's alert state.
 |---|---|---|
 | POST | `/trips/{id}/delay` `{delay_min, reason}` | driver (own), admin |
 | GET | `/trips/{id}/delays` | any |
-| GET | `/delays?service_date=` | admin, security |
+| GET | `/delays?service_date=` | admin |
 | POST | `/delays/watch` | admin: run one watcher pass now |
 
 ## Events

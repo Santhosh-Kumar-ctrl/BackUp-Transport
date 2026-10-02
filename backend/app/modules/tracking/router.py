@@ -29,6 +29,6 @@ async def trip_live(trip_id: int, _: Principal = Depends(current_principal),
 
 
 @router.get("/tracking/live", response_model=list[LiveTrip])
-async def all_live(_: Principal = Depends(require_roles(Role.ADMIN, Role.SECURITY)),
+async def all_live(_: Principal = Depends(require_roles(Role.ADMIN)),
                    session: AsyncSession = Depends(get_session)):
     return await service.live_trips(session, await trips_service.active_trips(session))

@@ -7,7 +7,7 @@ Not a business module. Everything every module needs, and nothing module-specifi
 | `config.py` | `settings` (env vars / `backend/.env`): DB URLs, JWT, thresholds, timezone |
 | `db.py` | async `engine`, `SessionLocal`, `get_session` FastAPI dependency |
 | `models.py` | `Base` (with constraint naming convention), `TimestampMixin`, `str_enum()` |
-| `roles.py` | `Role` enum: student, driver, admin, security, parent |
+| `roles.py` | `Role` enum: student, driver, admin |
 | `security.py` | bcrypt hashing, `sign()/verify()` JWTs with a `typ` claim, access/refresh tokens |
 | `deps.py` | `current_principal`, `require_roles(...)` → `Principal(id, role)` decoded from the token (no DB hit) |
 | `errors.py` | `NotFound`, `Conflict`, `Forbidden`, `Unauthorized`, `InvalidState` → JSON `{detail, code}` |

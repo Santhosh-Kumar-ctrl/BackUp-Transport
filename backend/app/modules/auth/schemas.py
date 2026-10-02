@@ -9,7 +9,6 @@ class StudentProfileIn(BaseModel):
     roll_no: str = Field(min_length=1, max_length=32)
     department: str | None = None
     year: int | None = Field(default=None, ge=1, le=6)
-    parent_user_id: int | None = None
 
 
 class DriverProfileIn(BaseModel):

@@ -139,7 +139,6 @@ async def broadcast(position: BusPosition, trip: Trip) -> None:
     data = {**PositionOut.model_validate(position).model_dump(), "route_id": trip.route_id}
     await hub.send_to_topic(f"route:{trip.route_id}", "position", data)
     await hub.send_to_role(Role.ADMIN, "position", data)
-    await hub.send_to_role(Role.SECURITY, "position", data)
 
 
 # ---------------- Queries ----------------

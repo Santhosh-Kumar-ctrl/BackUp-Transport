@@ -89,9 +89,6 @@ async def seed() -> None:
         admin = await auth_service.create_user(s, UserCreate(
             email=f"admin@{DOMAIN}", password=PASSWORD, full_name="Transport Office", role=Role.ADMIN,
             phone="04422220000"), actor_id=None)
-        await auth_service.create_user(s, UserCreate(
-            email=f"security@{DOMAIN}", password=PASSWORD, full_name="Gate Security", role=Role.SECURITY),
-            actor_id=admin.id)
 
         campus = await md.create_stop(s, StopIn(name=CAMPUS[0], landmark=CAMPUS[1],
                                                 latitude=CAMPUS[2], longitude=CAMPUS[3]))
@@ -150,7 +147,6 @@ async def seed() -> None:
           f"{gen.created} trips generated for {gen.service_date}.")
     print("\nLogins (password for all: %s)" % PASSWORD)
     print(f"  admin     admin@{DOMAIN}")
-    print(f"  security  security@{DOMAIN}")
     print(f"  drivers   driver1@{DOMAIN} .. driver{len(DRIVERS)}@{DOMAIN}   (driver1 runs route 14)")
     print(f"  students  student1@{DOMAIN} .. student{len(FIRST)}@{DOMAIN}  (student1 rides route 14)")
 

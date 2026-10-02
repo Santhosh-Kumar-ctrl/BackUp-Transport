@@ -26,7 +26,7 @@ admin_only = require_roles(Role.ADMIN)
 
 # ---- Buses (reads: admin + driver) ----
 @router.get("/buses", response_model=list[BusOut])
-async def list_buses(_: Principal = Depends(require_roles(Role.ADMIN, Role.DRIVER, Role.SECURITY)),
+async def list_buses(_: Principal = Depends(require_roles(Role.ADMIN, Role.DRIVER)),
                      session: AsyncSession = Depends(get_session)):
     return await service.list_buses(session)
 

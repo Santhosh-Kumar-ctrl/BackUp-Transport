@@ -44,7 +44,7 @@ class _AdminPeopleScreenState extends ConsumerState<AdminPeopleScreen> {
             runSpacing: Space.s,
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              for (final r in [Role.student, Role.driver, Role.admin, Role.security, null])
+              for (final r in [Role.student, Role.driver, Role.admin, null])
                 _Chip(
                   label: r == null ? 'Everyone' : '${r.name[0].toUpperCase()}${r.name.substring(1)}s',
                   selected: _role == r,
@@ -219,7 +219,7 @@ class _AddPersonDialogState extends ConsumerState<_AddPersonDialog> {
                   initialValue: _role,
                   decoration: const InputDecoration(labelText: 'Role'),
                   items: [
-                    for (final r in [Role.student, Role.driver, Role.admin, Role.security])
+                    for (final r in [Role.student, Role.driver, Role.admin])
                       DropdownMenuItem(value: r, child: Text(r.name)),
                   ],
                   onChanged: (r) => setState(() => _role = r!),

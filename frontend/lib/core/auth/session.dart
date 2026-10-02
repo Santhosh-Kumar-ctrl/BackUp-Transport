@@ -7,7 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../api/api_client.dart';
 import '../config.dart';
 
-enum Role { student, driver, admin, security, parent }
+enum Role { student, driver, admin }
 
 class AppUser {
   const AppUser({

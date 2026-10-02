@@ -29,7 +29,7 @@ async def trip_delays(trip_id: int, _: Principal = Depends(current_principal),
 
 @router.get("/delays", response_model=list[DelayReportOut])
 async def delays(service_date: date | None = None,
-                 _: Principal = Depends(require_roles(Role.ADMIN, Role.SECURITY)),
+                 _: Principal = Depends(require_roles(Role.ADMIN)),
                  session: AsyncSession = Depends(get_session)):
     return await service.list_reports(session, service_date=service_date)
 

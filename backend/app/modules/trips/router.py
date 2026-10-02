@@ -60,7 +60,7 @@ async def generate(body: GenerateIn, p: Principal = Depends(admin_only),
 @router.get("/trips", response_model=list[TripDetail])
 async def list_trips(service_date: date | None = None, status: TripStatus | None = None,
                      route_id: int | None = None, driver_id: int | None = None,
-                     _: Principal = Depends(require_roles(Role.ADMIN, Role.SECURITY)),
+                     _: Principal = Depends(require_roles(Role.ADMIN)),
                      session: AsyncSession = Depends(get_session)):
     trips = await service.list_trips(session, service_date=service_date, status=status,
                                      route_id=route_id, driver_id=driver_id)

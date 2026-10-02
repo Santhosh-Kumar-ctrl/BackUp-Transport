@@ -1,5 +1,18 @@
 # auth: dev log
 
+## 2026-10-02: Security and parent roles removed
+**Changed**
+- `Role` is now `student`, `driver`, `admin`. Endpoints that allowed admin or security are admin-only,
+  and live map and ops pushes go to admins only. `student_profiles.parent_user_id` is gone.
+- Migration `9d3e5b7c1a2f` deletes existing security/parent accounts and narrows the `users.role`
+  CHECK. Downgrade restores the column and the role list, not the deleted accounts.
+- App: the parent placeholder screen and the security-only admin menu are gone. The People screen
+  offers the three remaining roles.
+
+**Why**
+- Neither role had screens or workflows of its own, so they only added permission branches to
+  maintain. If a parent view is needed later, add it back as a new role with its own profile table.
+
 ## 2026-09-24: Flutter screens
 **Built**
 - Login screen (sign-blue station sign + route-colour band), session persisted in shared_preferences,

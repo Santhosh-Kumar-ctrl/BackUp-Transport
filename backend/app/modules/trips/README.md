@@ -48,7 +48,7 @@ scheduled ──start──▶ in_progress ──end──▶ completed
 | GET / POST | `/schedules` | admin | list / create (`driver_id` optional: defaults to the bus's assigned driver, else 422 `driver_required`) |
 | PATCH | `/schedules/{id}` | admin | change bus, driver, time, days, active |
 | POST | `/trips/generate` `{service_date?}` | admin | create the day's trips (also runs automatically) |
-| GET | `/trips?service_date&status&route_id&driver_id` | admin, security | trips with route/bus/driver/stops |
+| GET | `/trips?service_date&status&route_id&driver_id` | admin | trips with route/bus/driver/stops |
 | GET | `/trips/mine?service_date` | driver | today's trips for the driver |
 | GET | `/trips/{id}` | any | trip detail incl. `next_stop` |
 | POST | `/trips/{id}/start` | driver (own), admin | start |

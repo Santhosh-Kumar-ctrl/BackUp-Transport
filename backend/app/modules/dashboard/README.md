@@ -12,7 +12,7 @@
 ## API
 | Method | Path | Role | Returns |
 |---|---|---|---|
-| GET | `/dashboard/admin` | admin, security | today's **departure board** (one row per trip: route, bus, driver, status, delay, next stop + expected time, stops done, boarded/capacity, occupancy level, allocated), counts, today's alerts, route utilisation |
+| GET | `/dashboard/admin` | admin | today's **departure board** (one row per trip: route, bus, driver, status, delay, next stop + expected time, stops done, boarded/capacity, occupancy level, allocated), counts, today's alerts, route utilisation |
 | GET | `/dashboard/driver` | driver | today's trips with occupancy + the active trip |
 | GET | `/dashboard/student` | student | allocation + route, today's trips on my route with **my stop's expected time**, boarded?, unread count |
 
@@ -21,7 +21,7 @@ flagged overdue by the watcher shows as late even before the driver checks in.
 
 ## Live updates
 `register()` forwards operational events as `{"type":"ops","data":{event, payload}}`:
-- to all **admin** and **security** sockets
+- to all **admin** sockets
 - to topic **`route:{id}`** (student apps subscribe to their route)
 - to the trip's **driver**
 

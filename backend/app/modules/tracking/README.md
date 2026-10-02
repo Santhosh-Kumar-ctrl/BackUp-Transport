@@ -20,7 +20,7 @@ driver's phone ──POST /trips/{id}/positions (batch)──► tracking.servic
                                                          │ fix ≤ 2 km from an unreached stop, first time this trip
                                                          │   └► BusApproaching → notifications picks the riders
                                                          ▼
-                                  after commit: WebSocket "position" → route:{id} topic + admins/security
+                                  after commit: WebSocket "position" → route:{id} topic + admins
 ```
 - **Every source goes through `ingest()`.** A Traccar bridge or a hardware feed later only needs
   to call it; the rules stay in one place.
@@ -64,12 +64,12 @@ drawn nowhere and never auto-arrives.
 |---|---|---|---|
 | POST | `/trips/{id}/positions` `{positions: [{latitude, longitude, speed_kmph?, heading_deg?, accuracy_m?, recorded_at?}]}` (1–500) | the trip's driver; admin when `ALLOW_SIMULATION` | ingest; returns `{accepted, arrived[], approaching[], position}` |
 | GET | `/trips/{id}/live` | any | route, stops with coordinates, next stop, latest position |
-| GET | `/tracking/live` | admin, security | the same for every running trip |
+| GET | `/tracking/live` | admin | the same for every running trip |
 
 Errors: 403 not your trip, 422 `bad_trip_state` (trip not running: the phone stops reporting).
 
 WebSocket: `{"type": "position", "data": {trip_id, route_id, bus_id, latitude, longitude, speed_kmph, heading_deg, accuracy_m, recorded_at}}`
-to `route:{route_id}` subscribers and to every admin/security socket. Only the newest fix of each batch is pushed.
+to `route:{route_id}` subscribers and to every admin socket. Only the newest fix of each batch is pushed.
 
 ## Settings
 | Env | Default | |
@@ -96,7 +96,7 @@ to `route:{route_id}` subscribers and to every admin/security socket. Only the n
 | Position reporter (GPS stream → buffered batches; Android foreground service) | driver | `frontend/lib/modules/tracking/state/position_reporter.dart` |
 | Location sharing strip | driver run screen | `frontend/lib/modules/tracking/widgets/sharing_strip.dart` |
 | Live map (route line, stops, bus, "You", distance) | driver, student, admin | `frontend/lib/modules/tracking/widgets/live_map.dart` |
-| Live map screen (all running buses) | admin, security | `frontend/lib/modules/tracking/screens/admin_live_map_screen.dart` |
+| Live map screen (all running buses) | admin | `frontend/lib/modules/tracking/screens/admin_live_map_screen.dart` |
 
 Map tiles come from `--dart-define=TILE_URL=...` (default: the OpenStreetMap public server,
 **development only**: switch to MapTiler/Stadia/self-hosted before launch; see `frontend/lib/core/config.dart`).

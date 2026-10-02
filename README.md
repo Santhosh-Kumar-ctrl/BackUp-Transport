@@ -31,7 +31,7 @@ flutter pub get
 flutter run -d chrome
 ```
 Logins, password `transit123` for all: `admin@college.edu` · `driver1@college.edu` (route 14)
-· `student1@college.edu` (route 14) · `security@college.edu`.
+· `student1@college.edu` (route 14).
 
 ## Day-30 acceptance scenario
 With the API running:

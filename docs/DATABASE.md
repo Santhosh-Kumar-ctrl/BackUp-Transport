@@ -1,6 +1,6 @@
 # Database design
 
-PostgreSQL 16 · 18 tables · Alembic head `4f1c2d7a9b3e`
+PostgreSQL 16 · 18 tables · Alembic head `9d3e5b7c1a2f`
 This document describes the schema **as it exists in the database** (generated from the live
 schema on 2026-09-24). If you change a model, update the relevant section here in the same PR.
 
@@ -26,12 +26,14 @@ the owner's service (see `docs/CONTRIBUTING.md`, rule 1).
 | capacity, history, dashboard | *none: read-only modules* |
 
 ### Entity-relationship diagram
+A full diagram with every column, coloured by owning module, is in
+[database.eraser](database.eraser): paste it into a new **Entity Relationship** diagram on
+[eraser.io](https://app.eraser.io). The summary below shows the relationships only.
 
 ```mermaid
 erDiagram
     users ||--o| student_profiles : "has (students)"
     users ||--o| driver_profiles : "has (drivers)"
-    users |o--o{ student_profiles : "parent of"
     users |o--o| buses : "regular driver"
 
     routes ||--o{ route_stops : "ordered stops"
@@ -98,7 +100,7 @@ erDiagram
 
 | Column(s) | Allowed values | Meaning |
 |---|---|---|
-| `users.role` | `student`, `driver`, `admin`, `security`, `parent` | one role per account |
+| `users.role` | `student`, `driver`, `admin` | one role per account |
 | `buses.status` | `active`, `maintenance`, `retired` | only `active` buses can start trips |
 | `trip_schedules.direction`, `trips.direction` | `pickup`, `drop` | pickup = stops → campus (route order); drop = campus → stops (reversed) |
 | `trips.status` | `scheduled`, `in_progress`, `completed`, `cancelled` | state machine in §5.2 |
@@ -170,7 +172,6 @@ Example payload (`TripDelayed`):
 | `roll_no` | varchar(32) | ✓ | **UQ** (`ix_student_profiles_roll_no`) |
 | `department` | varchar(80) | | |
 | `year` | smallint | | 1–6 (validated in API) |
-| `parent_user_id` | integer | | FK → `users.id` SET NULL (parent view, P1) |
 
 #### `driver_profiles` (1:1 with a `driver` user)
 | Column | Type | Null | Notes |
@@ -495,6 +496,7 @@ thousand rows.
 | `bbfa08bf4a36` | initial P0 schema (all 17 tables) |
 | `760c6592a8a4` | `buses.driver_id`: bus's regular driver (unique FK) |
 | `4f1c2d7a9b3e` | tracking: `bus_positions` gains `heading_deg`, `accuracy_m`, `(trip_id, recorded_at)` index; new `approach_alerts` |
+| `9d3e5b7c1a2f` | auth: `security` and `parent` roles removed (their accounts deleted); `student_profiles.parent_user_id` dropped |
 
 Workflow:
 ```bash
@@ -520,6 +522,5 @@ Tests don't use migrations: `app/conftest.py` builds the schema with `metadata.c
 | ETA / deviation sources | new `delay_reports.source` values `gps`, `eta_model` (CHECK migration) |
 | Route polylines for deviation detection | new `route_shapes` table (master_data) |
 | Agent context / decisions | agent-owned tables; read `domain_events` for history |
-| Parent view | `student_profiles.parent_user_id` (exists) |
 | Push notification tokens | new `device_tokens` table (notifications) |
 | Semester-based allocations | `allocations.valid_to` column |

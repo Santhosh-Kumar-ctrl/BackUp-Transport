@@ -18,10 +18,10 @@ only (see CONTRIBUTING rule 1).
 ## API
 | Method | Path | Role | Purpose |
 |---|---|---|---|
-| GET | `/history/events?type=&type=&aggregate_type&aggregate_id&trip_id&route_id&date_from&date_to&limit&offset` | admin, security | filtered event log (newest first) with actor names |
-| GET | `/history/trips/{id}/timeline` | admin, security | everything that happened on a trip, oldest first |
-| GET | `/history/trips?date_from&date_to&route_id` | admin, security | per-trip report: times, max delay, alerts, boarded, present, absent |
-| GET | `/history/attendance?date_from&date_to&route_id&student_id&format=json\|csv` | admin, security | attendance rows / CSV download |
+| GET | `/history/events?type=&type=&aggregate_type&aggregate_id&trip_id&route_id&date_from&date_to&limit&offset` | admin | filtered event log (newest first) with actor names |
+| GET | `/history/trips/{id}/timeline` | admin | everything that happened on a trip, oldest first |
+| GET | `/history/trips?date_from&date_to&route_id` | admin | per-trip report: times, max delay, alerts, boarded, present, absent |
+| GET | `/history/attendance?date_from&date_to&route_id&student_id&format=json\|csv` | admin | attendance rows / CSV download |
 
 ## Frontend screens
 | Screen | Role | File |

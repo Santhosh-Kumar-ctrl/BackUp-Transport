@@ -34,7 +34,6 @@ class StudentProfile(Base):
     roll_no: Mapped[str] = mapped_column(String(32), unique=True, index=True)
     department: Mapped[str | None] = mapped_column(String(80))
     year: Mapped[int | None] = mapped_column(SmallInteger)
-    parent_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
 
     user: Mapped[User] = relationship(back_populates="student", foreign_keys=[user_id])
 

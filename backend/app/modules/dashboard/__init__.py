@@ -18,7 +18,6 @@ LIVE_EVENTS = [
 async def _forward(ev: events.Event) -> None:
     data = {"event": ev.type, "payload": ev.payload, "occurred_at": ev.occurred_at}
     await hub.send_to_role(Role.ADMIN, "ops", data)
-    await hub.send_to_role(Role.SECURITY, "ops", data)
     if route_id := ev.payload.get("route_id"):
         await hub.send_to_topic(f"route:{route_id}", "ops", data)
     if driver_id := ev.payload.get("driver_id"):

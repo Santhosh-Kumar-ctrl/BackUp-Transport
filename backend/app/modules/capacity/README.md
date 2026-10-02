@@ -33,8 +33,8 @@ On every `StudentBoarded`: publish `CapacityWarning` when the trip first reaches
 | Method | Path | Role |
 |---|---|---|
 | GET | `/capacity/trips/{id}` | any |
-| GET | `/capacity/active` | admin, security |
-| GET | `/capacity/routes` | admin, security |
+| GET | `/capacity/active` | admin |
+| GET | `/capacity/routes` | admin |
 
 ## Events
 | Emits | Payload |

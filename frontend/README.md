@@ -6,8 +6,7 @@ One app, three role areas chosen at login:
 |---|---|---|
 | student | `/student` | My line: next bus at my stop, live line diagram, **Scan to board** |
 | driver | `/driver` | Today's runs, then the run screen (ARRIVED per stop, boarding QR, riders, running late) |
-| admin / security | `/admin` | Live departure board, network, fleet, people, allocation, schedules, reports |
-| parent | `/parent` | placeholder (P1) |
+| admin | `/admin` | Live departure board, network, fleet, people, allocation, schedules, reports |
 
 ## Run
 ```bash

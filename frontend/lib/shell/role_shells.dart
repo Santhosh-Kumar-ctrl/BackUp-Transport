@@ -146,15 +146,11 @@ class AdminShell extends ConsumerWidget {
     NavItem('Alerts', '/admin/alerts', Icons.notifications_none, showUnread: true),
   ];
 
-  /// Security staff see the operational views only.
-  static const _securityPaths = {'/admin', '/admin/map', '/admin/reports', '/admin/alerts'};
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(sessionProvider)?.user;
-    final items = user?.role == Role.security ? _all.where((i) => _securityPaths.contains(i.path)).toList() : _all;
     final wide = MediaQuery.sizeOf(context).width >= 960;
-    final rail = _Rail(items: items, location: location, user: user);
+    final rail = _Rail(items: _all, location: location, user: user);
     return LiveNotificationListener(
       child: wide
           ? Scaffold(
