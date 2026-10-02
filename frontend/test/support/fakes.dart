@@ -275,3 +275,36 @@ Json adminDashboardJson() {
     ],
   };
 }
+
+/// `/trips/7/live`: the bus between stops 2 and 3; the campus has no coordinates.
+Json liveTripJson() => {
+  'trip_id': 7,
+  'route': route14,
+  'direction': 'pickup',
+  'status': 'in_progress',
+  'bus_registration_no': 'TN09AB1401',
+  'delay_min': 8,
+  'next_stop_sequence': 3,
+  'position': {
+    'trip_id': 7,
+    'bus_id': 1,
+    'latitude': 12.95,
+    'longitude': 80.237,
+    'speed_kmph': 28,
+    'heading_deg': 190,
+    'accuracy_m': 8,
+    'recorded_at': at(0),
+  },
+  'stops': [
+    for (var i = 0; i < _stopNames.length; i++)
+      {
+        'sequence': i + 1,
+        'stop_id': i + 1,
+        'name': _stopNames[i],
+        'latitude': i == _stopNames.length - 1 ? null : 12.99 - 0.02 * i,
+        'longitude': i == _stopNames.length - 1 ? null : 80.248 - 0.005 * i,
+        'scheduled_at': at(-20 + _offsets[i]),
+        'arrived_at': i < 2 ? at(-20 + _offsets[i]) : null,
+      },
+  ],
+};

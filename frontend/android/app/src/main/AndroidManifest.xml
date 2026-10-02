@@ -2,6 +2,13 @@
     <!-- Talk to the transport API; scan the driver's boarding QR. -->
     <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.CAMERA"/>
+    <!-- Driver's phone reports the bus position during a trip. A foreground service (with a
+         notification) keeps it reporting with the screen off, so "while in use" access is enough
+         and background location is not requested. -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
 
     <!-- usesCleartextTraffic: the dev API runs on plain http://<laptop-ip>:8000.
          Remove it (and serve the API over HTTPS) before a production release. -->

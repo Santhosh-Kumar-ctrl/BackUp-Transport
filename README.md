@@ -22,7 +22,7 @@ python -m venv .venv
 pip install -e ".[dev]"
 cp ../.env.example .env
 alembic upgrade head
-python -m scripts.seed            # demo college: 3 routes, 4 buses, 3 drivers, 30 students
+python -m scripts.seed            # St. Joseph's College of Engineering (OMR, Chennai): 3 routes, 4 buses, 3 drivers, 30 students
 uvicorn app.main:app --reload     # http://localhost:8000/docs
 
 # 3. Frontend (new terminal)
@@ -45,6 +45,19 @@ stop 2 twelve minutes late → the waiting student and admin are notified → th
 the delay → the trip ends, attendance is finalised and the timeline is recorded. The same
 scenario runs as an automated test in `backend/app/tests/test_acceptance.py`.
 
+## Live tracking demo
+The driver's phone is the bus's GPS: while a trip runs it reports every ~5 s. A stop is marked
+arrived when the bus comes within 100 m, and riders of a stop get an alert when it's 2 km away.
+Without a phone on a real bus, simulate one:
+```bash
+cd backend
+python -m scripts.simulate_bus                 # drives driver1's route 14 at 10x speed, fix every 2 s
+python -m scripts.simulate_bus --direction drop --end
+```
+Watch it as `student4@college.edu` (waits at Perungudi on route 14) or on the admin **Live map**.
+Map tiles default to the public OpenStreetMap server (development only). Before launch, build with
+`--dart-define=TILE_URL=<MapTiler/Stadia/self-hosted URL>`.
+
 ## Modules (P0)
 Each module owns one backend folder and one frontend folder, with its own README (reference)
 and DEVLOG (history of decisions).
@@ -61,9 +74,10 @@ and DEVLOG (history of decisions).
 | notifications | who hears what; inbox + WebSocket push | [README](backend/app/modules/notifications/README.md) | member 5 |
 | history | event timeline, trip & attendance reports | [README](backend/app/modules/history/README.md) | member 5 |
 | dashboard | per-role home aggregates, live board | [README](backend/app/modules/dashboard/README.md) | member 5 |
+| tracking (P1) | live bus position, GPS auto-arrival at stops, "bus is 2 km away" alerts | [README](backend/app/modules/tracking/README.md) | Team B |
 
 Shared code: [backend/app/core](backend/app/core/README.md) · [frontend](frontend/README.md) ·
-[design system](frontend/lib/design/README.md). How to work in this repo:
+[design system](frontend/lib/design/README.md) · [database design](docs/DATABASE.md). How to work in this repo:
 [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md).
 
 ## How the modules connect
@@ -86,7 +100,7 @@ still waiting downstream and pushes to their phones; dashboard pushes a refresh 
 
 ## Tests
 ```bash
-cd backend && .venv/Scripts/python -m pytest -q      # 52 API/service tests incl. acceptance
+cd backend && .venv/Scripts/python -m pytest -q      # 68 API/service tests incl. acceptance
 cd frontend && flutter analyze && flutter test
 ```
 Backend tests use the `transit_test` database created by `docker compose`.
@@ -96,8 +110,10 @@ Backend tests use the `transit_test` database created by `docker compose`.
 - Read history from the `domain_events` table / `GET /history/events`.
 - Call module services as agent tools: `allocation.service.assign`, `trips.service.*`,
   `notifications.service.messages_for/deliver`, `capacity.service.route_utilization`.
-- GPS / simulation: write `bus_positions` (table exists), then feed `delay_monitor.service.evaluate`
-  with `source=gps` for ETA-based alerts.
+- GPS: every position source goes through `tracking.service.ingest()` (driver's phone today; Traccar
+  or hardware later). For ETA-based alerts, feed `delay_monitor.service.evaluate` with `source=gps`.
+- Push notifications (FCM): extend `notifications.service.deliver()`. `BusApproaching` and all other
+  alerts then reach phones with the app closed.
 
 ## Ports
 | Service | Port |

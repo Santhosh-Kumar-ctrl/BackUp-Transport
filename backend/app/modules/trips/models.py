@@ -97,16 +97,3 @@ class TripStopEvent(Base):
 
     __table_args__ = (UniqueConstraint("trip_id", "sequence", name="uq_trip_stop_events_seq"),)
 
-
-class BusPosition(Base):
-    """Telemetry stub for Team B (P1 GPS / simulation). Unused by P0 logic."""
-
-    __tablename__ = "bus_positions"
-
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    trip_id: Mapped[int | None] = mapped_column(ForeignKey("trips.id", ondelete="CASCADE"), index=True)
-    bus_id: Mapped[int] = mapped_column(ForeignKey("buses.id", ondelete="CASCADE"))
-    latitude: Mapped[float]
-    longitude: Mapped[float]
-    speed_kmph: Mapped[float | None]
-    recorded_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)

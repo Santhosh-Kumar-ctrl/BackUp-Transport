@@ -1,5 +1,30 @@
 # trips: dev log
 
+## 2026-10-02: Auto-close trips left running
+**Built**
+- `close_stale_trips()`: completes trips still `in_progress` after their service day once they've
+  had no start/stop activity for `STALE_TRIP_GRACE_HOURS`. Runs as the `stale-trip-closer` job and
+  at the top of `start_trip`. Publishes `TripEnded` with `auto_closed: true` (boarding finalizes
+  attendance as usual).
+
+**Why**
+- A trip the driver never ended was invisible on their Runs screen (it only lists today) but still
+  tripped the `already_running` check, so the driver could start nothing until an admin stepped in.
+
+**Decisions (and why)**
+- Ends at the last recorded activity, not "now", so trip durations aren't stretched by days.
+- Doesn't mark the terminus reached, unlike a manual End: nobody saw the bus get there.
+- The grace period keeps a late run that crosses midnight from being closed mid-route.
+
+## 2026-09-29: GPS arrivals
+**Built**
+- `arrive_at_stop(observed_at=…)` for the tracking module's geofence; `StopArrived` carries `source`.
+- `BusPosition` moved to the tracking module (same `bus_positions` table).
+
+**Decisions (and why)**
+- Tracking calls the existing arrive path instead of writing `trip_stop_events` itself, so the
+  ordering rules and every downstream consumer stay in one place.
+
 ## 2026-09-24: Runs follow the bus's assigned driver
 **Built**
 - Subscriber on `BusDriverAssigned` → `reassign_bus_driver()` updates active schedules and today's

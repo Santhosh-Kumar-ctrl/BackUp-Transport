@@ -5,6 +5,8 @@ import 'package:transit/core/format.dart';
 import 'package:transit/design/design.dart';
 import 'package:transit/modules/dashboard/data/dashboard_api.dart';
 import 'package:transit/modules/dashboard/screens/student_home_screen.dart';
+import 'package:transit/modules/tracking/data/tracking_api.dart';
+import 'package:transit/modules/tracking/widgets/live_map.dart';
 import 'package:transit/modules/trips/data/trip_models.dart';
 
 import 'support/fakes.dart';
@@ -69,5 +71,39 @@ void main() {
 
     final offline = ApiException.fromDio(DioException(requestOptions: req));
     expect(offline.message, contains("Can't reach"));
+  });
+
+  test('live trip JSON maps stops, coordinates and the latest fix', () {
+    final t = LiveTrip.fromJson(liveTripJson());
+    expect(t.running, isTrue);
+    expect(t.stops.first.point, isNotNull);
+    expect(t.stops.last.point, isNull); // a stop without coordinates stays off the map
+    expect(t.position!.speedKmph, 28);
+    expect(t.nextStopSequence, 3);
+  });
+
+  test('a late refetch never moves the bus backwards', () {
+    final t = LiveTrip.fromJson(liveTripJson());
+    final older = BusFix(
+      tripId: 7,
+      latitude: 1,
+      longitude: 1,
+      recordedAt: t.position!.recordedAt.subtract(const Duration(seconds: 30)),
+    );
+    final newer = BusFix(
+      tripId: 7,
+      latitude: 2,
+      longitude: 2,
+      recordedAt: t.position!.recordedAt.add(const Duration(seconds: 5)),
+    );
+    expect(t.withNewerPosition(older).position, same(t.position));
+    expect(t.withNewerPosition(newer).position, same(newer));
+    expect(t.withNewerPosition(null).position, same(t.position));
+  });
+
+  test('distances read like a sign', () {
+    expect(distanceLabel(430), '450 m');
+    expect(distanceLabel(1840), '1.8 km');
+    expect(distanceLabel(12400), '12 km');
   });
 }

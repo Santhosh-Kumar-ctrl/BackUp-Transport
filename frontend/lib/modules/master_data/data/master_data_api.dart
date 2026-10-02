@@ -127,8 +127,9 @@ class MasterDataActions {
     ]),
   );
 
-  Future<Stop> createStop(String name, {String? landmark}) async =>
-      Stop.fromJson(await _api.post<Json>('/stops', {'name': name, 'landmark': landmark}));
+  Future<Stop> createStop(String name, {String? landmark, double? latitude, double? longitude}) async => Stop.fromJson(
+    await _api.post<Json>('/stops', {'name': name, 'landmark': landmark, 'latitude': latitude, 'longitude': longitude}),
+  );
 
   Future<void> createBus({required String registration, required int capacity, String? model}) =>
       _api.post('/buses', {'registration_no': registration, 'capacity': capacity, 'model': model});

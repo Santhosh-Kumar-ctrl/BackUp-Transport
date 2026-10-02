@@ -1,4 +1,4 @@
-"""Seed a demo college: routes, stops, buses, drivers, students, schedules, today's trips.
+"""Seed a demo college (St. Joseph's College of Engineering, Chennai): routes, stops, buses, drivers, students, schedules, today's trips.
 
     python -m scripts.seed           # seed if empty
     python -m scripts.seed --reset   # wipe every table first
@@ -34,31 +34,33 @@ from app.modules.trips.schemas import ScheduleIn  # noqa: E402
 PASSWORD = "transit123"
 DOMAIN = "college.edu"
 
-# code, name, colour, [(stop name, landmark, minutes from first stop)], campus arrival offset
+# St. Joseph's College of Engineering, OMR, Semmancheri, Chennai. Stop coordinates are approximate
+# (good enough for demo geofences; correct them from the admin app or a phone at the real stop).
+# code, name, colour, [(stop name, landmark, minutes from first stop, lat, lng)], campus arrival offset
 ROUTES = [
-    ("14", "North Loop", "#0B5CAD", [
-        ("Anna Nagar Roundtana", "Near the tower park", 0),
-        ("Thirumangalam", "Metro station, gate B", 7),
-        ("Koyambedu Market", "Opp. flower market", 15),
-        ("Vadapalani", "Bus depot", 24),
-        ("Ashok Pillar", "Signal junction", 31),
+    ("14", "OMR Line", "#0B5CAD", [
+        ("Tidel Park", "Tidel Park bus stop, OMR", 0, 12.98930, 80.24840),
+        ("Perungudi", "Perungudi toll plaza", 8, 12.96110, 80.24130),
+        ("Thoraipakkam", "Thoraipakkam PTC", 15, 12.93720, 80.23380),
+        ("Karapakkam", "Karapakkam signal", 22, 12.91600, 80.22900),
+        ("Sholinganallur", "Sholinganallur junction", 28, 12.90100, 80.22790),
+    ], 40),
+    ("7", "ECR Line", "#00857C", [
+        ("Adyar Depot", "Opp. Adyar bus depot", 0, 13.00670, 80.25700),
+        ("Thiruvanmiyur", "Thiruvanmiyur bus terminus", 8, 12.98300, 80.25940),
+        ("Palavakkam", "Palavakkam bus stop, ECR", 15, 12.95800, 80.25600),
+        ("Neelankarai", "Neelankarai signal", 19, 12.94900, 80.25500),
+        ("Injambakkam", "VGP Golden Beach arch", 26, 12.91900, 80.25100),
     ], 42),
-    ("7", "Lake Road", "#00857C", [
-        ("Velachery Lake", "Lake view bus stop", 0),
-        ("Taramani", "IT park entrance", 9),
-        ("Adyar Depot", "Opp. Adyar depot", 18),
-        ("Guindy", "Race course gate", 27),
+    ("22", "Tambaram Line", "#8C1D40", [
+        ("Tambaram East", "Tambaram railway station, east exit", 0, 12.92490, 80.12750),
+        ("Selaiyur", "Selaiyur police station", 7, 12.91700, 80.14100),
+        ("Sembakkam", "Sembakkam lake bus stop", 13, 12.92150, 80.16100),
+        ("Medavakkam", "Medavakkam Koot Road", 20, 12.91850, 80.19250),
+        ("Perumbakkam", "Perumbakkam main road", 27, 12.89900, 80.20300),
     ], 38),
-    ("22", "Hill View", "#8C1D40", [
-        ("Tambaram East", "Railway station", 0),
-        ("Chromepet", "MIT gate", 8),
-        ("Pallavaram", "Cantonment", 16),
-        ("Meenambakkam", "Airport metro", 23),
-        ("Alandur", "Court complex", 30),
-        ("Saidapet", "Bridge stop", 36),
-    ], 45),
 ]
-CAMPUS = ("Main Gate (Campus)", "College main entrance")
+CAMPUS = ("St. Joseph's College (Campus)", "Main gate, Jeppiaar Nagar, OMR", 12.86970, 80.21860)
 
 BUSES = [("TN09AB1401", 40, "Ashok Leyland Lynx"), ("TN09AB0702", 32, "Tata Starbus"),
          ("TN09AB2203", 50, "Eicher Skyline"), ("TN09AB0904", 20, "Force Traveller")]
@@ -91,13 +93,14 @@ async def seed() -> None:
             email=f"security@{DOMAIN}", password=PASSWORD, full_name="Gate Security", role=Role.SECURITY),
             actor_id=admin.id)
 
-        campus = await md.create_stop(s, StopIn(name=CAMPUS[0], landmark=CAMPUS[1]))
+        campus = await md.create_stop(s, StopIn(name=CAMPUS[0], landmark=CAMPUS[1],
+                                                latitude=CAMPUS[2], longitude=CAMPUS[3]))
         routes = []
         for code, name, color, stops, campus_offset in ROUTES:
             route = await md.create_route(s, RouteIn(code=code, name=name, color=color), actor_id=admin.id)
             items = []
-            for stop_name, landmark, offset in stops:
-                stop = await md.create_stop(s, StopIn(name=stop_name, landmark=landmark))
+            for stop_name, landmark, offset, lat, lng in stops:
+                stop = await md.create_stop(s, StopIn(name=stop_name, landmark=landmark, latitude=lat, longitude=lng))
                 items.append(RouteStopIn(stop_id=stop.id, offset_min=offset))
             items.append(RouteStopIn(stop_id=campus.id, offset_min=campus_offset))
             routes.append(await md.set_route_stops(s, route.id, items, actor_id=admin.id))

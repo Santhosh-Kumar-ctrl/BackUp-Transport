@@ -15,6 +15,7 @@
 | `TripDelayed` | pickup: allocated to a **not-yet-reached** stop and **not boarded**; drop: on board (or all riders if not started). Each gets *their* stop's new expected time | ✓ (unless they reported it) | ✓ with affected count |
 | `TripDelayResolved` | same targeting | | ✓ |
 | `TripStarted` | all allocated on the route, with their stop's scheduled time | | |
+| `BusApproaching` (tracking, once per trip and stop, bus within 2 km) | pickup: allocated to that stop and **not boarded**; drop: **on board** and getting off there | | |
 | `TripCancelled` | all allocated | | ✓ |
 | `CapacityWarning` / `OverCapacity` | | ✓ | ✓ |
 | `UnallocatedBoarding` | | ✓ | ✓ |

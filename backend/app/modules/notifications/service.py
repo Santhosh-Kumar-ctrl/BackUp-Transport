@@ -105,6 +105,20 @@ async def delay_student_targets(session: AsyncSession, payload: dict) -> dict[in
     return {sid: by_stop.get(stops_of.get(sid, -1), {}) for sid in riders}
 
 
+async def approach_student_targets(session: AsyncSession, payload: dict) -> list[int]:
+    """Riders of the stop the bus is nearing.
+
+    Pickup: allocated to that stop and not boarded yet. Drop: on board and getting off there.
+    """
+    trip = await trips_service.get_trip(session, payload["trip_id"])
+    stops_of = await _student_stops(session, trip.route_id)
+    boarded = await boarding_service.boarded_student_ids(session, trip.id)
+    at_stop = [sid for sid, stop in stops_of.items() if stop == payload["stop_id"]]
+    if trip.direction == Direction.PICKUP:
+        return [sid for sid in at_stop if sid not in boarded]
+    return [sid for sid in at_stop if sid in boarded]
+
+
 async def messages_for(session: AsyncSession, ev: Event) -> list[Message]:
     p = ev.payload
     t = ev.type
@@ -152,6 +166,20 @@ async def messages_for(session: AsyncSession, ev: Event) -> list[Message]:
                     title=f"Route {code} delay cleared",
                     body=f"Now {p['delay_min']} min off schedule (was {p['previous_delay_min']}).", payload=base),
         ]
+
+    if t == "BusApproaching":
+        targets = await approach_student_targets(session, p)
+        km = f"{p['distance_m'] / 1000:.1f}"
+        payload = {**base, "stop": {"stop_id": p["stop_id"], "stop_name": p["stop_name"]},
+                   "distance_m": p["distance_m"]}
+        if p["direction"] == Direction.PICKUP.value:
+            return [Message(user_ids=targets, type=t, severity=Severity.INFO,
+                            title=f"Route {code} bus is {km} km from your stop",
+                            body=f"Head to {p['stop_name']} now. Expected around {_hm(p['expected_at'])}.",
+                            payload=payload)]
+        return [Message(user_ids=targets, type=t, severity=Severity.INFO,
+                        title=f"{p['stop_name']} is coming up",
+                        body=f"About {km} km to go. Get ready to get off.", payload=payload)]
 
     if t == "TripStarted":
         trip = await trips_service.get_trip(session, p["trip_id"])
@@ -221,7 +249,7 @@ async def messages_for(session: AsyncSession, ev: Event) -> list[Message]:
 
 
 HANDLED_EVENTS = [
-    "TripDelayed", "TripDelayResolved", "TripStarted", "TripCancelled",
+    "TripDelayed", "TripDelayResolved", "TripStarted", "TripCancelled", "BusApproaching",
     "CapacityWarning", "OverCapacity", "UnallocatedBoarding",
     "StudentAllocated", "AllocationChanged", "AllocationEnded", "BusDriverAssigned",
 ]

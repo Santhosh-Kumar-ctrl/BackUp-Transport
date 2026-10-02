@@ -9,6 +9,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:transit/core/auth/session.dart';
@@ -21,6 +22,9 @@ import 'package:transit/modules/dashboard/data/dashboard_api.dart';
 import 'package:transit/modules/dashboard/screens/admin_board_screen.dart';
 import 'package:transit/modules/dashboard/screens/student_home_screen.dart';
 import 'package:transit/modules/notifications/data/notifications_api.dart';
+import 'package:transit/modules/tracking/data/tracking_api.dart';
+import 'package:transit/modules/tracking/state/position_reporter.dart';
+import 'package:transit/modules/tracking/widgets/live_map.dart';
 import 'package:transit/modules/trips/data/trip_models.dart';
 import 'package:transit/modules/trips/data/trips_api.dart';
 import 'package:transit/modules/trips/screens/driver_run_screen.dart';
@@ -46,6 +50,20 @@ class _FakeBoarding implements BoardingActions {
 
   @override
   Future<BoardingReceipt> manual(int tripId, {int? studentId, String? rollNo}) => throw UnimplementedError();
+}
+
+/// The driver's phone mid-trip, without touching the platform GPS plugin.
+class _SharingReporter extends PositionReporter {
+  @override
+  ReporterState build() => ReporterState(
+    status: ReporterStatus.sharing,
+    tripId: 7,
+    lastSentAt: DateTime.now().subtract(const Duration(seconds: 4)),
+    lastFix: LiveTrip.fromJson(liveTripJson()).position,
+  );
+
+  @override
+  Future<void> start(int tripId) async {}
 }
 
 Session _session(Role role, String name) => Session(
@@ -76,12 +94,17 @@ Future<void> _shoot(
   );
   await tester.pump(const Duration(milliseconds: 50));
   await tester.pump(const Duration(seconds: 1));
+  await tester.pump(); // maps frame their route once they have a size
+  await tester.pump();
   await expectLater(find.byType(MaterialApp), matchesGoldenFile('screenshots/$name.png'));
   await tester.pumpWidget(const SizedBox.shrink()); // dispose timers
 }
 
 void main() {
   setUpAll(loadAppFonts);
+
+  // Tiles can't load in tests (no network, no disk cache): the map renders its line and markers only.
+  LiveMap.tileProviderOverride = NetworkTileProvider(cachingProvider: const DisabledMapCachingProvider());
 
   testWidgets('login', (t) async {
     SessionController.restored = null;
@@ -98,6 +121,7 @@ void main() {
       overrides: [
         studentDashboardProvider.overrideWith((ref) async => StudentDashboard.fromJson(studentDashboardJson())),
         tripProvider(7).overrideWith((ref) async => TripDetail.fromJson(tripJson())),
+        liveTripProvider(7).overrideWith((ref) => Stream.value(LiveTrip.fromJson(liveTripJson()))),
       ],
     );
   });
@@ -111,6 +135,8 @@ void main() {
       size: const Size(390, 1000),
       overrides: [
         tripProvider(7).overrideWith((ref) async => TripDetail.fromJson(tripJson())),
+        liveTripProvider(7).overrideWith((ref) => Stream.value(LiveTrip.fromJson(liveTripJson()))),
+        positionReporterProvider.overrideWith(_SharingReporter.new),
         rosterProvider(7).overrideWith(
           (ref) async =>
               Roster.fromJson({'trip_id': 7, 'capacity': 40, 'allocated_count': 10, 'boarded_count': 4, 'entries': []}),

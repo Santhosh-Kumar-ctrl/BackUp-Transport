@@ -40,7 +40,7 @@ plus `frontend/lib/design/` (the design system).
   - [ ] tests for the service logic (`pytest app/modules/<module>`)
   - [ ] a new entry at the top of the module's `DEVLOG.md`
   - [ ] README updated if endpoints/events/tables changed
-  - [ ] a migration if models changed
+  - [ ] a migration if models changed, and `docs/DATABASE.md` updated to match
   - [ ] `flutter analyze` clean for frontend changes
 - Get a review from one person in **another** module. Boundary mistakes are easier to spot from outside.
 

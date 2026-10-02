@@ -22,6 +22,15 @@ class Settings(BaseSettings):
     capacity_warn_pct: int = 90
     delay_watch_interval_seconds: int = 60
     trip_generation_interval_seconds: int = 900
+    # A trip still in progress after its service day is closed automatically once it has had no
+    # start/stop activity for this long (covers drivers who forget to tap End).
+    stale_trip_grace_hours: int = 3
+
+    # Live tracking (GPS from the driver's phone).
+    arrival_radius_m: int = 100  # a stop is auto-marked arrived inside this radius
+    approach_radius_m: int = 2000  # riders of a stop are told when the bus is this close
+    max_fix_accuracy_m: int = 100  # fixes less accurate than this are stored but never trigger anything
+    arrival_lookahead_stops: int = 2  # auto-arrival considers only the next N unreached stops
 
     # Lets admins pass explicit timestamps (e.g. arrived_at) to simulate delays in demos.
     allow_simulation: bool = True

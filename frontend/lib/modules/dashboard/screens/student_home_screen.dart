@@ -7,6 +7,8 @@ import '../../../core/format.dart';
 import '../../../core/realtime/realtime.dart';
 import '../../../design/design.dart';
 import '../../master_data/data/master_data_api.dart';
+import '../../tracking/data/tracking_api.dart';
+import '../../tracking/widgets/live_map.dart';
 import '../../trips/data/trip_models.dart';
 import '../../trips/data/trips_api.dart';
 import '../data/dashboard_api.dart';
@@ -136,6 +138,7 @@ class _MyLine extends ConsumerWidget {
                 onPressed: () => context.push('/student/scan'),
               ),
             ),
+          if (focus.status == TripStatus.inProgress) _BusMap(tripId: focus.tripId, myStopId: myStop.stop.id),
           _LiveLine(tripId: focus.tripId, route: route, myStopId: myStop.stop.id, delayMin: focus.delayMin),
         ],
         if (others.isNotEmpty) ...[
@@ -233,6 +236,24 @@ class _NextBusPanel extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Where the bus is right now, with my stop marked and how far away it is.
+class _BusMap extends ConsumerWidget {
+  const _BusMap({required this.tripId, required this.myStopId});
+
+  final int tripId;
+  final int myStopId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final live = ref.watch(liveTripProvider(tripId)).asData?.value;
+    if (live == null) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(Space.gutter, 0, Space.gutter, Space.l),
+      child: LiveMap(trips: [live], myStopId: myStopId, followTripId: tripId),
     );
   }
 }

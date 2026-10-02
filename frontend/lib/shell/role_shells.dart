@@ -136,6 +136,7 @@ class AdminShell extends ConsumerWidget {
 
   static const _all = [
     NavItem('Live board', '/admin', Icons.dashboard_outlined),
+    NavItem('Live map', '/admin/map', Icons.map_outlined),
     NavItem('Network', '/admin/network', Icons.alt_route),
     NavItem('Fleet', '/admin/fleet', Icons.directions_bus_outlined),
     NavItem('People', '/admin/people', Icons.badge_outlined),
@@ -146,7 +147,7 @@ class AdminShell extends ConsumerWidget {
   ];
 
   /// Security staff see the operational views only.
-  static const _securityPaths = {'/admin', '/admin/reports', '/admin/alerts'};
+  static const _securityPaths = {'/admin', '/admin/map', '/admin/reports', '/admin/alerts'};
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {

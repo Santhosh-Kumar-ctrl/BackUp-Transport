@@ -262,6 +262,17 @@ class _StopPickerState extends ConsumerState<_StopPicker> {
   var _q = '';
   final _newName = TextEditingController();
   final _landmark = TextEditingController();
+  final _location = TextEditingController();
+  String? _locationError;
+
+  /// "12.8697, 80.2186" as copied from a map app. Throws [FormatException] on anything else.
+  static (double, double) parseLocation(String text) {
+    final parts = text.split(RegExp(r'[,\s]+')).where((p) => p.isNotEmpty).toList();
+    if (parts.length != 2) throw const FormatException();
+    final lat = double.parse(parts[0]), lng = double.parse(parts[1]);
+    if (lat.abs() > 90 || lng.abs() > 180) throw const FormatException();
+    return (lat, lng);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -270,7 +281,7 @@ class _StopPickerState extends ConsumerState<_StopPicker> {
       title: const Text('Add stop', style: TransitType.heading),
       content: SizedBox(
         width: 420,
-        height: 440,
+        height: 520,
         child: Column(
           children: [
             TextField(
@@ -300,6 +311,16 @@ class _StopPickerState extends ConsumerState<_StopPicker> {
               controller: _landmark,
               decoration: const InputDecoration(labelText: 'Landmark (optional)'),
             ),
+            const SizedBox(height: Space.s),
+            TextField(
+              controller: _location,
+              decoration: InputDecoration(
+                labelText: 'Location: latitude, longitude',
+                helperText: 'Copy it from a map app. Needed for live tracking and automatic arrival.',
+                helperMaxLines: 2,
+                errorText: _locationError,
+              ),
+            ),
           ],
         ),
       ),
@@ -310,11 +331,22 @@ class _StopPickerState extends ConsumerState<_StopPicker> {
           height: 44,
           onPressed: () async {
             if (_newName.text.trim().isEmpty) return;
+            (double, double)? at;
+            if (_location.text.trim().isNotEmpty) {
+              try {
+                at = parseLocation(_location.text.trim());
+              } on FormatException {
+                setState(() => _locationError = 'Write it as 12.8697, 80.2186');
+                return;
+              }
+            }
             final s = await ref
                 .read(masterDataActionsProvider)
                 .createStop(
                   _newName.text.trim(),
                   landmark: _landmark.text.trim().isEmpty ? null : _landmark.text.trim(),
+                  latitude: at?.$1,
+                  longitude: at?.$2,
                 );
             ref.invalidate(stopsProvider);
             if (context.mounted) Navigator.pop(context, s);

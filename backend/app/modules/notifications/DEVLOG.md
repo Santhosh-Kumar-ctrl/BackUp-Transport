@@ -1,5 +1,15 @@
 # notifications: dev log
 
+## 2026-09-29: "Bus is near" alerts
+**Built**
+- `BusApproaching` → "Route 14 bus is 1.9 km from your stop" to waiting pickup riders, and
+  "<stop> is coming up" to drop riders on board. `approach_student_targets()` is public for the agent.
+
+**Decisions (and why)**
+- Same targeting as delay alerts (boarded or not, direction-aware), so a student already on the
+  bus isn't told to walk to their stop.
+- In-app only for now. FCM goes in `deliver()` later.
+
 ## 2026-09-24: Flutter screens
 **Built**
 - Alerts inbox (severity edge, route badge, mark read / all), unread badge in bottom bars and

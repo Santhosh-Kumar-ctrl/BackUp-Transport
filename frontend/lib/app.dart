@@ -22,6 +22,7 @@ import 'modules/master_data/screens/admin_fleet_screen.dart';
 import 'modules/master_data/screens/admin_network_screen.dart';
 import 'modules/master_data/screens/route_editor_screen.dart';
 import 'modules/notifications/screens/inbox_screen.dart';
+import 'modules/tracking/screens/admin_live_map_screen.dart';
 import 'modules/trips/screens/admin_schedules_screen.dart';
 import 'modules/trips/screens/driver_home_screen.dart';
 import 'modules/trips/screens/driver_run_screen.dart';
@@ -94,6 +95,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (_, state, child) => AdminShell(location: state.matchedLocation, child: child),
         routes: [
           GoRoute(path: '/admin', builder: (_, _) => const AdminBoardScreen()),
+          GoRoute(path: '/admin/map', builder: (_, _) => const AdminLiveMapScreen()),
           GoRoute(path: '/admin/network', builder: (_, _) => const AdminNetworkScreen()),
           GoRoute(
             path: '/admin/network/:id',

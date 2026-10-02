@@ -1,7 +1,7 @@
 """Trip scheduling and the driver's start -> arrive -> end workflow.
 
 Public API for other modules: get_trip, next_stop, trip_detail(s), active_trips,
-trips_for_route_on, driver_trips, route_seat_capacity, stops_after.
+trips_for_route_on, driver_trips, route_seat_capacity, stops_after, close_stale_trips.
 """
 
 from datetime import date, datetime, timedelta
@@ -320,6 +320,7 @@ async def start_trip(
     bus = await md_service.get_bus(session, trip.bus_id)
     if bus.status != BusStatus.ACTIVE:
         raise InvalidState(f"Bus {bus.registration_no} is {bus.status.value}", code="bus_unavailable")
+    await close_stale_trips(session)  # a run left open on an earlier day must not block this one
     busy = await session.scalar(
         select(Trip.id).where(
             Trip.status == TripStatus.IN_PROGRESS,
@@ -347,8 +348,15 @@ async def start_trip(
 
 
 async def arrive_at_stop(
-    session: AsyncSession, trip_id: int, sequence: int, p: Principal, *, arrived_at: datetime | None = None
+    session: AsyncSession, trip_id: int, sequence: int, p: Principal, *, arrived_at: datetime | None = None,
+    observed_at: datetime | None = None,
 ) -> Trip:
+    """Check the bus in at a stop.
+
+    `arrived_at` is the simulation override (admins only). `observed_at` is for in-process callers
+    that detected the arrival themselves (tracking's GPS geofence): the time of the fix, clamped
+    between the trip start and now. The router never passes it.
+    """
     trip = await get_trip(session, trip_id)
     _ensure_operator(trip, p)
     if trip.status != TripStatus.IN_PROGRESS:
@@ -361,7 +369,10 @@ async def arrive_at_stop(
     if any(e.arrived_at for e in trip.stop_events if e.sequence > sequence):
         raise InvalidState("A later stop is already marked as reached", code="out_of_order")
 
-    arrived = _effective_time(arrived_at, p)
+    if observed_at is not None:
+        arrived = min(max(observed_at, trip.started_at), now_utc())
+    else:
+        arrived = _effective_time(arrived_at, p)
     ev.arrived_at = arrived
     ev.delay_min = minutes_between(arrived, ev.scheduled_at)
     trip.current_delay_min = max(0, ev.delay_min)
@@ -370,7 +381,8 @@ async def arrive_at_stop(
         session, "StopArrived",
         _payload(trip, sequence=ev.sequence, stop_id=ev.stop_id, stop_name=ev.stop_name,
                  scheduled_at=ev.scheduled_at, arrived_at=arrived, delay_min=ev.delay_min,
-                 is_last=ev.sequence == trip.stop_events[-1].sequence),
+                 is_last=ev.sequence == trip.stop_events[-1].sequence,
+                 source="gps" if observed_at is not None else "manual"),
         aggregate=("trip", trip.id), actor_id=p.id,
     )
     return trip
@@ -399,6 +411,38 @@ async def end_trip(
         aggregate=("trip", trip.id), actor_id=p.id,
     )
     return trip
+
+
+def _last_activity(trip: Trip) -> datetime:
+    return max([trip.started_at, *(e.arrived_at for e in trip.stop_events if e.arrived_at)])
+
+
+async def close_stale_trips(session: AsyncSession) -> list[Trip]:
+    """Complete trips left in progress after their service day (the driver never tapped End).
+
+    A trip is stale once its service date is past and it has had no start/stop activity for
+    `stale_trip_grace_hours`, so a late run that crosses midnight is left alone. It ends at its
+    last activity, and unreached stops (the terminus included) stay unreached rather than
+    being marked arrived.
+    """
+    cutoff = now_utc() - timedelta(hours=settings.stale_trip_grace_hours)
+    stale = [t for t in await session.scalars(select(Trip).where(
+        Trip.status == TripStatus.IN_PROGRESS, Trip.service_date < today_local()))
+        if _last_activity(t) < cutoff]
+    for trip in stale:
+        ended = _last_activity(trip)
+        trip.status = TripStatus.COMPLETED
+        trip.ended_at = ended
+        await session.flush()
+        last = trip.stop_events[-1]
+        await events.publish(
+            session, "TripEnded",
+            _payload(trip, ended_at=ended, final_delay_min=last.delay_min,
+                     skipped_stops=[e.sequence for e in trip.stop_events if e.arrived_at is None],
+                     auto_closed=True),
+            aggregate=("trip", trip.id), actor_id=None,
+        )
+    return stale
 
 
 async def cancel_trip(session: AsyncSession, trip_id: int, reason: str, p: Principal) -> Trip:

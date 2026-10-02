@@ -34,6 +34,12 @@ browser: `http://<laptop-ip>:8000/health` should show `{"status":"ok"}`.
 | **Install an APK** | `flutter build apk --release --dart-define=API_BASE=http://<laptop-ip>:8000`, then copy `build/app/outputs/flutter-apk/app-release.apk` to the phone and open it (allow "install unknown apps") | QR camera works; rebuild if your laptop IP changes |
 | **Phone browser** (Android or iPhone) | `flutter run -d web-server --web-hostname 0.0.0.0 --web-port 8080 --dart-define=API_BASE=http://<laptop-ip>:8000`, open `http://<laptop-ip>:8080` on the phone | Browsers only allow the camera on HTTPS, so use the paste-code fallback to board |
 
+**Live tracking on devices:** drivers need the **Android app** to share the bus location. It
+asks for location permission on the first trip and shows a "Sharing bus location" notification
+while the trip runs, so it keeps reporting with the screen off. In a browser the location only
+works on HTTPS (or `localhost`) and stops when the tab is closed. Students and admins can use any option.
+Maps use `--dart-define=TILE_URL=...` (default: the OpenStreetMap public server, fine for development only).
+
 `android:usesCleartextTraffic="true"` in `AndroidManifest.xml` allows the plain-http dev API.
 Remove it and serve the API over HTTPS for a production release.
 

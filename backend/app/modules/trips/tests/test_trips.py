@@ -1,6 +1,12 @@
-from datetime import datetime, time
+from datetime import datetime, time, timedelta
 
+from sqlalchemy import update
+
+from app.core.db import SessionLocal
 from app.core.roles import Role
+from app.core.timeutil import local_tz, now_utc
+from app.modules.trips.models import Trip, TripStopEvent
+from app.modules.trips.service import close_stale_trips
 
 
 def _mins(a: str, b: str) -> int:
@@ -105,3 +111,44 @@ async def test_schedule_requires_driver_role(world):
             "direction": "pickup", "departure_time": "07:30:00"}
     r = await world.post("/schedules", body, expect=422)
     assert r.json()["code"] == "wrong_role"
+
+
+async def _age_trip(trip_id: int, hours: int) -> None:
+    """Move a trip and all its times `hours` into the past, as if it ran on an earlier day."""
+    h = timedelta(hours=hours)
+    async with SessionLocal() as s:
+        await s.execute(update(Trip).where(Trip.id == trip_id).values(
+            service_date=(now_utc() - h).astimezone(local_tz()).date(),
+            scheduled_departure=Trip.scheduled_departure - h, started_at=Trip.started_at - h))
+        await s.execute(update(TripStopEvent).where(TripStopEvent.trip_id == trip_id).values(
+            scheduled_at=TripStopEvent.scheduled_at - h, arrived_at=TripStopEvent.arrived_at - h))
+        await s.commit()
+
+
+async def test_trip_left_running_on_an_earlier_day_is_closed_and_unblocks_the_driver(world):
+    w = await world.running_trip(n_stops=3)
+    old, driver = w["trip"], w["driver"]
+    await world.post(f"/trips/{old['id']}/stops/2/arrive", who=driver)
+    await _age_trip(old["id"], 48)  # the driver never tapped End, two days ago
+
+    s2 = await world.schedule(w["route"], w["bus"], driver, departure=time(23, 59))
+    new = await world.todays_trip(s2)
+    started = (await world.post(f"/trips/{new['id']}/start", who=driver)).json()
+    assert started["status"] == "in_progress"
+
+    closed = (await world.get(f"/trips/{old['id']}")).json()
+    assert closed["status"] == "completed"
+    assert closed["ended_at"] == closed["stops"][1]["arrived_at"]  # ends at its last activity
+    assert closed["stops"][-1]["arrived_at"] is None  # the terminus is not made up
+    ev = (await world.get("/history/events", type=["TripEnded"], aggregate_id=old["id"])).json()
+    assert ev[0]["payload"]["auto_closed"] is True and ev[0]["payload"]["skipped_stops"] == [3]
+
+
+async def test_late_run_crossing_midnight_is_not_closed(world):
+    w = await world.running_trip(n_stops=3)
+    tid = w["trip"]["id"]
+    await _age_trip(tid, 24)
+    await world.post(f"/trips/{tid}/stops/2/arrive", who=w["driver"])  # still checking in stops
+    async with SessionLocal() as s:
+        assert await close_stale_trips(s) == []
+    assert (await world.get(f"/trips/{tid}")).json()["status"] == "in_progress"

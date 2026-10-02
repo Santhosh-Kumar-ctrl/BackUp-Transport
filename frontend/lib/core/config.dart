@@ -9,4 +9,18 @@ abstract final class AppConfig {
   static const apiBase = String.fromEnvironment('API_BASE', defaultValue: 'http://localhost:8000');
 
   static String get wsBase => apiBase.replaceFirst(RegExp(r'^http'), 'ws');
+
+  /// Map tiles. The OpenStreetMap public server is fine for development only (fair-use policy,
+  /// attribution required). Before launch point this at MapTiler, Stadia or your own server:
+  /// `--dart-define=TILE_URL=https://api.maptiler.com/maps/streets-v2/{z}/{x}/{y}.png?key=KEY`
+  static const tileUrl = String.fromEnvironment(
+    'TILE_URL',
+    defaultValue: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+  );
+
+  /// Shown on every map, as the tile provider's licence requires.
+  static const tileAttribution = String.fromEnvironment(
+    'TILE_ATTRIBUTION',
+    defaultValue: '© OpenStreetMap contributors',
+  );
 }

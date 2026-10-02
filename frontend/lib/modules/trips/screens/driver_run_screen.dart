@@ -9,6 +9,10 @@ import '../../../design/design.dart';
 import '../../boarding/data/boarding_api.dart';
 import '../../dashboard/data/dashboard_api.dart';
 import '../../delay_monitor/widgets/report_delay_sheet.dart';
+import '../../tracking/data/tracking_api.dart';
+import '../../tracking/state/position_reporter.dart';
+import '../../tracking/widgets/live_map.dart';
+import '../../tracking/widgets/sharing_strip.dart';
 import '../data/trip_models.dart';
 import '../data/trips_api.dart';
 
@@ -69,6 +73,7 @@ class _DriverRunScreenState extends ConsumerState<DriverRunScreen> {
     setState(() => _ending = true);
     try {
       await ref.read(tripActionsProvider).end(t.id);
+      ref.read(positionReporterProvider.notifier).stop();
       ref.invalidate(driverDashboardProvider);
       if (mounted) context.go('/driver');
     } on ApiException catch (e) {
@@ -96,6 +101,7 @@ class _DriverRunScreenState extends ConsumerState<DriverRunScreen> {
         builder: (t) {
           final next = t.nextStop;
           final r = roster.asData?.value;
+          syncTripReporting(ref, runningTripId: t.running ? t.id : null, shownTripId: t.id);
           return Column(
             children: [
               SignHeader(
@@ -116,6 +122,7 @@ class _DriverRunScreenState extends ConsumerState<DriverRunScreen> {
                 trailing: NumberPlate(t.busRegistration, dense: true),
               ),
               _StatusStrip(trip: t, boarded: r?.boarded, capacity: r?.capacity ?? t.busCapacity),
+              if (t.running) const LocationSharingStrip(),
               if (t.running)
                 Padding(
                   padding: const EdgeInsets.fromLTRB(Space.gutter, Space.m, Space.gutter, 0),
@@ -159,6 +166,7 @@ class _DriverRunScreenState extends ConsumerState<DriverRunScreen> {
                 child: ListView(
                   padding: const EdgeInsets.fromLTRB(0, Space.l, Space.gutter, Space.xl),
                   children: [
+                    if (t.running) _DriverMap(tripId: t.id),
                     LineDiagram(
                       color: t.route.color,
                       onDark: true,
@@ -265,6 +273,24 @@ class _StatusStrip extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// The driver's own bus on the map, from the phone's latest fix (fresher than the server's copy).
+class _DriverMap extends ConsumerWidget {
+  const _DriverMap({required this.tripId});
+
+  final int tripId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final live = ref.watch(liveTripProvider(tripId)).asData?.value;
+    final fix = ref.watch(positionReporterProvider.select((s) => s.lastFix));
+    if (live == null) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(Space.gutter, 0, 0, Space.l),
+      child: LiveMap(trips: [live], localFix: fix, followTripId: tripId, height: 220),
     );
   }
 }

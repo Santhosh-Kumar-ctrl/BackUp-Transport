@@ -8,6 +8,7 @@ import '../../../core/format.dart';
 import '../../../core/realtime/realtime.dart';
 import '../../../design/design.dart';
 import '../../dashboard/data/dashboard_api.dart';
+import '../../tracking/state/position_reporter.dart';
 import '../data/trip_models.dart';
 import '../data/trips_api.dart';
 
@@ -42,18 +43,22 @@ class DriverHomeScreen extends ConsumerWidget {
             value: dash,
             onDark: true,
             onRetry: () => ref.invalidate(driverDashboardProvider),
-            builder: (d) => d.trips.isEmpty
-                ? const SignNotice(
-                    title: 'No runs today',
-                    body: 'You have no trips scheduled today. The transport office assigns runs.',
-                  )
-                : RefreshIndicator(
-                    onRefresh: () async => ref.invalidate(driverDashboardProvider),
-                    child: ListView(
-                      padding: const EdgeInsets.all(Space.gutter),
-                      children: [for (final t in d.trips) _RunBlock(run: t)],
-                    ),
-                  ),
+            builder: (d) {
+              // Resume sharing the bus's location after an app restart mid-trip.
+              syncTripReporting(ref, runningTripId: d.active?.trip.id);
+              return d.trips.isEmpty
+                  ? const SignNotice(
+                      title: 'No runs today',
+                      body: 'You have no trips scheduled today. The transport office assigns runs.',
+                    )
+                  : RefreshIndicator(
+                      onRefresh: () async => ref.invalidate(driverDashboardProvider),
+                      child: ListView(
+                        padding: const EdgeInsets.all(Space.gutter),
+                        children: [for (final t in d.trips) _RunBlock(run: t)],
+                      ),
+                    );
+            },
           ),
         ),
       ],

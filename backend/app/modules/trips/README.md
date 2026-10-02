@@ -25,9 +25,13 @@ scheduled ──start──▶ in_progress ──end──▶ completed
 ```
 - **start**: assigned driver (or admin). Bus must be `active`; neither driver nor bus may have
   another trip in progress. Marks stop 1 as reached at the start time.
-- **arrive** (`/stops/{sequence}/arrive`): records `arrived_at` + `delay_min`. Stops may be skipped,
+- **arrive** (`/stops/{sequence}/arrive`, or automatically by the tracking module when GPS puts the bus
+  within 100 m): records `arrived_at` + `delay_min`. Stops may be skipped,
   but you can't go back to an earlier stop once a later one is reached.
 - **end**: marks the terminus reached (if not already) and completes the trip.
+- **auto-close**: a trip still `in_progress` after its service day, with no start/stop activity for
+  `STALE_TRIP_GRACE_HOURS` (3 h), is completed at its last activity. Unreached stops stay unreached.
+  Runs from the background job and before every start, so a forgotten End never blocks the next run.
 
 ## Data model
 | Table | Key columns |
@@ -35,7 +39,8 @@ scheduled ──start──▶ in_progress ──end──▶ completed
 | `trip_schedules` | `route_id`, `bus_id`, `driver_id`, `direction` (pickup/drop), `departure_time` (local), `days_of_week` int[] ISO 1–7, `is_active` |
 | `trips` | `schedule_id`, `route_id`, `bus_id`, `driver_id`, `direction`, `service_date`, `scheduled_departure` (UTC), `status`, `started_at`, `ended_at`, `current_delay_min`, `cancel_reason`; unique (schedule, date) |
 | `trip_stop_events` | `trip_id`, `route_stop_id` (SET NULL), `stop_id`, `stop_name` (snapshot), `sequence`, `scheduled_at`, `arrived_at`, `delay_min` |
-| `bus_positions` | **stub for Team B** (GPS/simulation): `trip_id`, `bus_id`, `latitude`, `longitude`, `speed_kmph`, `recorded_at` |
+
+`bus_positions` (GPS telemetry) now belongs to the [tracking](../tracking/README.md) module.
 
 ## API
 | Method | Path | Role | Purpose |
@@ -62,8 +67,8 @@ Error codes: `bad_trip_state`, `bus_unavailable`, `already_running`, `already_ar
 |---|---|
 | `TripsGenerated` | `service_date`, `created` |
 | `TripStarted` | `trip_id, route_id, bus_id, driver_id, direction, scheduled_departure, started_at, delay_min` |
-| `StopArrived` | `sequence, stop_id, stop_name, scheduled_at, arrived_at, delay_min, is_last` |
-| `TripEnded` | `ended_at, final_delay_min, skipped_stops` |
+| `StopArrived` | `sequence, stop_id, stop_name, scheduled_at, arrived_at, delay_min, is_last, source` (`manual` \| `gps`) |
+| `TripEnded` | `ended_at, final_delay_min, skipped_stops`, `auto_closed` (only when closed automatically; `actor_id` is null) |
 | `TripCancelled` | `reason` |
 | `ScheduleCreated`, `ScheduleUpdated` | ids |
 
@@ -72,17 +77,23 @@ Error codes: `bad_trip_state`, `bus_unavailable`, `already_running`, `already_ar
 Consumers: delay_monitor (TripStarted, StopArrived), boarding (TripEnded → attendance),
 notifications, dashboard (live refresh).
 
+`arrive_at_stop(..., observed_at=)` is for in-process callers that detected the arrival themselves
+(tracking's geofence): the GPS fix time, clamped between trip start and now. The router never passes it.
+
 | Consumes | Why |
 |---|---|
 | `BusDriverAssigned` (master_data) | `reassign_bus_driver`: the bus's active schedules and not-yet-started trips (today onwards) move to the new driver. Running/finished trips keep theirs |
 
-## Background job
+## Background jobs
 `trip-generator` runs every `TRIP_GENERATION_INTERVAL_SECONDS` (15 min) and at startup, so
 today's trips always exist, including after midnight.
 
+`stale-trip-closer` runs on the same interval and auto-closes trips left running on an earlier day
+(see the state machine above).
+
 ## Public service API
 `get_trip`, `list_trips`, `active_trips`, `driver_trips`, `trips_for_route_on`, `trip_detail(s)`,
-`next_stop(trip)`, `stops_after(trip, seq)`, `route_seat_capacity(route_id)`.
+`next_stop(trip)`, `stops_after(trip, seq)`, `route_seat_capacity(route_id)`, `close_stale_trips()`.
 
 ## Frontend screens
 | Screen | Role | File |
@@ -97,7 +108,6 @@ cd backend && .venv/Scripts/python -m pytest app/modules/trips -q
 ```
 
 ## Extension notes (Team B)
-- **GPS / simulation:** write to `bus_positions`, then publish e.g. `BusPositionUpdated`. Auto-arrival
-  (geofence) can call `service.arrive_at_stop` so everything downstream keeps working.
+- **GPS:** done in the tracking module, which calls `service.arrive_at_stop(observed_at=…)`.
 - **Temporary route reassignment:** `PATCH /schedules/{id}` changes bus/driver for future trips.
   A one-day swap = new trip row with `schedule_id = NULL` (supported by the schema).

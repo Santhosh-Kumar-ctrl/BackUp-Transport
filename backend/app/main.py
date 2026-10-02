@@ -27,11 +27,12 @@ from app.modules import (
     history,
     master_data,
     notifications,
+    tracking,
     trips,
 )
 
 MODULES = [
-    auth, master_data, trips, allocation, boarding,
+    auth, master_data, trips, tracking, allocation, boarding,
     capacity, delay_monitor, notifications, history, dashboard,
 ]
 

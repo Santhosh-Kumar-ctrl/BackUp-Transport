@@ -6,12 +6,18 @@ from app.core import events, tasks
 from app.core.config import settings
 from app.core.db import SessionLocal
 from app.modules.trips.router import router
-from app.modules.trips.service import generate_trips, reassign_bus_driver
+from app.modules.trips.service import close_stale_trips, generate_trips, reassign_bus_driver
 
 
 async def _generate_today() -> None:
     async with SessionLocal() as session:
         await generate_trips(session)
+        await session.commit()
+
+
+async def _close_stale() -> None:
+    async with SessionLocal() as session:
+        await close_stale_trips(session)
         await session.commit()
 
 
@@ -27,6 +33,7 @@ async def _on_bus_driver_assigned(ev: events.Event) -> None:
 def register(app: FastAPI) -> None:
     # Ensures today's trips exist at startup and keeps checking (covers midnight rollover).
     tasks.every(settings.trip_generation_interval_seconds, "trip-generator", _generate_today)
+    tasks.every(settings.trip_generation_interval_seconds, "stale-trip-closer", _close_stale)
     events.subscribe("BusDriverAssigned", _on_bus_driver_assigned)
 
 
