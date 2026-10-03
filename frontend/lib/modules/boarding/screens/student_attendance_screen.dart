@@ -84,7 +84,7 @@ class _Row extends StatelessWidget {
                   minimumSize: const Size(0, 32),
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
-                onPressed: () => context.push('/student/report?trip=${a.tripId}'),
+                onPressed: () => context.go('/student/reports/new?trip=${a.tripId}'),
                 child: const Text('Report a problem'),
               ),
             ],

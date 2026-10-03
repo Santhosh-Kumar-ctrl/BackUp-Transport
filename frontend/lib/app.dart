@@ -69,6 +69,12 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(path: '/student/alerts', builder: (_, _) => const InboxScreen()),
           GoRoute(path: '/student/trips', builder: (_, _) => const StudentAttendanceScreen()),
           GoRoute(path: '/student/reports', builder: (_, _) => const MyReportsScreen()),
+          // Inside the shell, like the tabs: a page stacked over the shell made Flutter web throw
+          // a focus-traversal error when the form navigated back into it after sending.
+          GoRoute(
+            path: '/student/reports/new',
+            builder: (_, s) => ReportFormScreen(tripId: int.tryParse(s.uri.queryParameters['trip'] ?? '')),
+          ),
           GoRoute(
             path: '/student/reports/:id',
             builder: (_, s) => StudentReportScreen(reportId: id(s)),
@@ -76,10 +82,6 @@ final routerProvider = Provider<GoRouter>((ref) {
         ],
       ),
       GoRoute(path: '/student/scan', builder: (_, _) => const StudentScanScreen()),
-      GoRoute(
-        path: '/student/report',
-        builder: (_, s) => ReportFormScreen(tripId: int.tryParse(s.uri.queryParameters['trip'] ?? '')),
-      ),
 
       // ---- Driver ----
       ShellRoute(

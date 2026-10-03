@@ -351,12 +351,13 @@ class _AgentPanel extends StatelessWidget {
               style: TransitType.body,
             ),
             const SizedBox(height: Space.s),
-            Text(
-              r.analysedBy == 'rules'
-                  ? 'Written by the rule-based checker (the AI model was not available).'
-                  : 'Drafted by ${r.analysedBy}. Verdicts come from the trip records, not the AI.',
-              style: TransitType.small.copyWith(color: TransitColors.inkSoft),
-            ),
+            Text(switch (r.analysedBy) {
+              'rules' => 'Written by the rule-based checker (the AI model was not available).',
+              final by? when by.endsWith('+rules') =>
+                'Read by ${by.replaceFirst('+rules', '')}; the summary and draft are from the rule-based checker '
+                    "because the AI's version wasn't usable.",
+              final by => 'Drafted by $by. Verdicts come from the trip records, not the AI.',
+            }, style: TransitType.small.copyWith(color: TransitColors.inkSoft)),
           ],
         ],
       ),

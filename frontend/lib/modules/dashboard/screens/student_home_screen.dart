@@ -155,7 +155,7 @@ class _MyLine extends ConsumerWidget {
             icon: Icons.report_outlined,
             kind: SignButtonKind.quiet,
             expand: true,
-            onPressed: () => context.push('/student/report'),
+            onPressed: () => context.go('/student/reports/new'),
           ),
         ),
         const SizedBox(height: Space.xxl),

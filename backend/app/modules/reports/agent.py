@@ -61,7 +61,8 @@ async def analyse(session: AsyncSession, report_id: int) -> Report:
                                steps={"read": read_by, "write": write_by}).model_dump(mode="json")
     report.severity = severity
     report.analysis_status = AnalysisStatus.DONE
-    report.analysed_by = next((e for e in (read_by, write_by) if e != llm.RULES), llm.RULES)
+    # "qwen3:4b", "rules", or "qwen3:4b+rules" when only one step could use the model.
+    report.analysed_by = "+".join(dict.fromkeys((read_by, write_by)))
     report.analysed_at = now_utc()
     await session.flush()
 

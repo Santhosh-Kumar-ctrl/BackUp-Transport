@@ -1,5 +1,20 @@
 # reports: dev log
 
+## 2026-10-02: Guarding the model's drafts
+**Changed**
+- Every number and time in the model's write-up must appear in the report or the findings;
+  otherwise the rule-based summary and draft are used.
+- The model's output is capped (200 tokens to read, 600 to write).
+- `analysed_by` is `qwen3:4b+rules` when only one step used the model.
+
+**Why**
+- A full `simulate_reports` run produced a draft saying "above 6:00 km/h" (the finding said 60)
+  and another with a mangled stop name. Admins edit drafts, but a wrong figure in a draft
+  undermines the point of checking facts in code.
+- One write-up ran for the whole 120 s timeout while the others took about 6 s: a small model
+  can get stuck repeating itself. With the cap it stops within seconds and falls back.
+- The timed-out report showed `analysed_by = qwen3:4b` though its draft came from the rules.
+
 ## 2026-10-02: First build: reports, triage agent, lost and found
 **Built**
 - `reports`, `report_messages`, `found_items` tables (migration `bbb63096dc6b`).

@@ -84,7 +84,7 @@ class _ReportFormScreenState extends ConsumerState<ReportFormScreen> {
             leading: IconButton(
               tooltip: 'Back',
               icon: const Icon(Icons.arrow_back, color: TransitColors.white),
-              onPressed: () => context.canPop() ? context.pop() : context.go('/student'),
+              onPressed: () => context.go('/student/reports'),
             ),
           ),
           Expanded(

@@ -46,7 +46,13 @@ It does **not** decide anything about a person. Conduct reports get a `conduct: 
 
 ### When the model isn't there
 Ollama not running, a timeout, or output that doesn't fit the schema: that step falls back to
-keyword rules and templates, and `analysed_by` says `rules`. `REPORT_AI=rules` forces this (tests do).
+keyword rules and templates. `analysed_by` says `rules`, or `qwen3:4b+rules` when only one step
+used the model. The model's output is capped (`num_predict`) so a runaway answer fails fast.
+
+### Numbers in the draft are checked
+Every number and time in the model's summary, suggested action and draft reply must appear in
+the report text or the findings. If one doesn't (the model once wrote "6:00 km/h" for 60 km/h),
+the rule-based summary and draft are used instead. `REPORT_AI=rules` forces this (tests do).
 A sweeper job retries any report still `pending` after a restart.
 
 ### Prompt injection
@@ -57,7 +63,7 @@ only effects are a summary, a draft and extra *checks* (which only read data).
 ## Data model
 | Table | Key columns |
 |---|---|
-| `reports` | `student_id`, `trip_id`, `route_id`, `stop_id`, `kind`, `description`, `anonymous`, `status` (open/replied/closed), `severity`, `analysis_status`, `analysis` (jsonb), `analysed_by`, `analysed_at`, `matched_found_item_id`, `closed_at`, `closed_by`, `resolution_note` |
+| `reports` | `student_id`, `trip_id`, `route_id`, `stop_id`, `kind`, `description`, `anonymous`, `status` (open/replied/closed), `severity`, `analysis_status`, `analysis` (jsonb), `analysed_by` (`qwen3:4b`, `rules` or `qwen3:4b+rules`), `analysed_at`, `matched_found_item_id`, `closed_at`, `closed_by`, `resolution_note` |
 | `report_messages` | `report_id`, `author_id`, `from_staff`, `body`, `created_at` |
 | `found_items` | `trip_id`, `bus_id`, `logged_by`, `description`, `status` (unclaimed/matched/returned), `embedding` (float[]) |
 
@@ -121,7 +127,7 @@ doesn't use the dashboard's forwarding, which also reaches students on the route
 ## Frontend screens
 | Screen | Role | File |
 |---|---|---|
-| Report a problem (`/student/report`, `?trip=` to preselect) | student | `screens/report_form_screen.dart` |
+| Report a problem (`/student/reports/new`, `?trip=` to preselect) | student | `screens/report_form_screen.dart` |
 | My reports and a report's thread (`/student/reports`) | student | `screens/my_reports_screen.dart` |
 | Issues inbox and Found items tab (`/admin/issues`) | admin | `screens/admin_issues_screen.dart` |
 | Issue detail: evidence, draft reply, match, close (`/admin/issues/:id`) | admin | `screens/admin_issue_screen.dart` |

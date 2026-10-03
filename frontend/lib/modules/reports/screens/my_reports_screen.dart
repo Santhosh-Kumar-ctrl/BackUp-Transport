@@ -22,7 +22,7 @@ class MyReportsScreen extends ConsumerWidget {
           subtitle: 'Problems you told the transport office about',
           trailing: TextButton.icon(
             style: TextButton.styleFrom(foregroundColor: TransitColors.white),
-            onPressed: () => context.push('/student/report'),
+            onPressed: () => context.go('/student/reports/new'),
             icon: const Icon(Icons.add),
             label: const Text('New'),
           ),
@@ -36,7 +36,7 @@ class MyReportsScreen extends ConsumerWidget {
                     title: 'No reports yet',
                     body: 'Bus late, overcrowded, unsafe, or lost something? Tell the transport office.',
                     actionLabel: 'Report a problem',
-                    onAction: () => context.push('/student/report'),
+                    onAction: () => context.go('/student/reports/new'),
                   )
                 : RefreshIndicator(
                     onRefresh: () async => ref.invalidate(myReportsProvider),
@@ -63,7 +63,7 @@ class _Row extends StatelessWidget {
   Widget build(BuildContext context) {
     final (label, tone) = reportStatusPlate(r.status);
     return InkWell(
-      onTap: () => context.push('/student/reports/${r.id}'),
+      onTap: () => context.go('/student/reports/${r.id}'),
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: Space.m),
         child: Row(
@@ -147,7 +147,7 @@ class _StudentReportScreenState extends ConsumerState<StudentReportScreen> {
           leading: IconButton(
             tooltip: 'Back',
             icon: const Icon(Icons.arrow_back, color: TransitColors.white),
-            onPressed: () => context.canPop() ? context.pop() : context.go('/student/reports'),
+            onPressed: () => context.go('/student/reports'),
           ),
         ),
         Expanded(

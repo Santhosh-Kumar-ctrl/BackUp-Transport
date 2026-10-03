@@ -298,6 +298,25 @@ async def test_model_cannot_make_an_ordinary_report_critical(world, model_on):
     assert r["severity"] == "high"
 
 
+async def test_draft_with_a_garbled_number_is_replaced_by_the_rules_draft(world, model_on):
+    def reply_for(path, body):
+        if "FINDINGS" in body["messages"][1]["content"]:
+            return _chat({"summary": "Readings above 6:00 km/h.", "suggested_action": "Review speeds.",
+                          "draft_reply": "We saw readings above 6:00 km/h."})
+        return _chat({"subtype": "speeding", "claimed_delay_min": None, "mentioned_stop": None,
+                      "extra_checks": [], "severity_hint": "high"})
+
+    model_on(_ollama(reply_for))
+    w = await world.running_trip(n_stops=3)
+    student = await _rider(world, w, 0)
+    fixes = [{"latitude": 12.9 + i * 0.01, "longitude": 80.2, "speed_kmph": s} for i, s in enumerate([82, 88])]
+    await world.post(f"/trips/{w['trip']['id']}/positions", {"positions": fixes}, who=w["driver"])
+    r = await _report(world, student, "safety", "driver was too fast", w["trip"]["id"])
+    assert r["analysis"]["steps"] == {"read": settings.ollama_model, "write": "rules"}
+    assert r["analysed_by"] == f"{settings.ollama_model}+rules"
+    assert "6:00" not in r["analysis"]["draft_reply"] and "88 km/h" in r["analysis"]["draft_reply"]
+
+
 async def test_bad_model_output_falls_back_to_rules(world, model_on):
     model_on(_ollama(lambda path, body: _chat("sorry, I can't do JSON")))
     w = await world.running_trip(n_stops=3)
@@ -328,3 +347,10 @@ async def test_reanalyse_does_not_alert_admins_twice(world):
     assert after["analysis_status"] == "done" and datetime.fromisoformat(after["analysed_at"]) >= first_at
     alerts = [n for n in await world.inbox(world.admin) if n["type"] == "ReportAnalysed"]
     assert len(alerts) == 1
+
+
+def test_fact_check_catches_garbled_numbers_and_cut_off_stop_names():
+    src = "The bus reached Perungudi at 22:02, 12 min late. GPS shows 4 readings above 60 km/h."
+    assert llm.unsupported_numbers("It reached Perungudi at 22:02, 12 minutes late.", src) == []
+    assert llm.unsupported_numbers("Readings above 6:00 km/h.", src) == ["6:00"]
+    assert llm.unsupported_numbers("The bus arrived at Perung: 12 minutes late.", src) == ["Perung"]

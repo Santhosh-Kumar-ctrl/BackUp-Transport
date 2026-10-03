@@ -451,7 +451,7 @@ Constraint: `uq_approach_alerts_trip_stop (trip_id, stop_id)`: each stop is anno
 | `severity` | varchar(32) | | | enum, set by the agent (rules set the minimum) |
 | `analysis_status` | varchar(32) | ✓ | `pending` | enum, indexed (the retry sweeper looks for `pending`) |
 | `analysis` | jsonb | | | `{claims, findings[{check, verdict, detail, numbers}], match_candidates, summary, suggested_action, draft_reply, steps}` |
-| `analysed_by` | varchar(64) | | | model name (e.g. `qwen3:4b`) or `rules` |
+| `analysed_by` | varchar(64) | | | `qwen3:4b`, `rules`, or `qwen3:4b+rules` when only one step used the model |
 | `analysed_at` | timestamptz | | | |
 | `matched_found_item_id` | integer | | | FK → `found_items.id` SET NULL |
 | `closed_at` | timestamptz | | | |
