@@ -55,13 +55,18 @@ def plan_checks(kind: ReportKind, claims: Claims, trip: Trip | None) -> list[str
 
 
 def _stop_event(trip: Trip, report: Report, claims: Claims) -> TripStopEvent | None:
-    """The stop the report is about: one the student names, else their allocated stop."""
+    """The stop the report is about: one the student names, else their allocated stop.
+
+    An anonymous report only ever uses a stop the student named: their allocated stop would
+    narrow down who sent it."""
     if claims.mentioned_stop:
         want = claims.mentioned_stop.lower().strip()
         for e in trip.stop_events:
             name = e.stop_name.lower()
             if want and (want in name or name in want):
                 return e
+    if report.anonymous:
+        return None
     return next((e for e in trip.stop_events if e.stop_id == report.stop_id), None)
 
 
@@ -86,6 +91,9 @@ async def gather(session: AsyncSession, report: Report, claims: Claims) -> tuple
 
 async def _on_this_trip(session, report: Report, claims: Claims, trip: Trip) -> Finding:
     boarding = (await boarding_service.student_boardings_on(session, report.student_id, [trip.id])).get(trip.id)
+    if boarding and report.anonymous:
+        # No boarding time: matched against the trip roster it would identify the reporter.
+        return Finding(check="on_this_trip", verdict="confirmed", detail="The reporter boarded this trip.")
     if boarding:
         return Finding(check="on_this_trip", verdict="confirmed",
                        detail=f"The student boarded this trip at {_hm(boarding.boarded_at)}.",

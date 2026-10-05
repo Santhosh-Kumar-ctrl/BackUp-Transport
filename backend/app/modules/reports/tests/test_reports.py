@@ -354,3 +354,94 @@ def test_fact_check_catches_garbled_numbers_and_cut_off_stop_names():
     assert llm.unsupported_numbers("It reached Perungudi at 22:02, 12 minutes late.", src) == []
     assert llm.unsupported_numbers("Readings above 6:00 km/h.", src) == ["6:00"]
     assert llm.unsupported_numbers("The bus arrived at Perung: 12 minutes late.", src) == ["Perung"]
+
+
+# ---------------- Review fixes: B4, H4, L1, M3 ----------------
+async def test_anonymous_report_evidence_cant_identify_the_reporter(world):
+    w = await world.running_trip(n_stops=4)
+    reporter = await _rider(world, w, stop_index=1)
+    await _rider(world, w, stop_index=2)
+    r = await _report(world, reporter, "safety", "The driver was shouting at us and driving rashly.",
+                      w["trip"]["id"], anonymous=True)
+    assert r["student_id"] is None and r["student_name"] is None and r["stop_name"] is None
+    on_trip = _finding(r, "on_this_trip")
+    assert on_trip["verdict"] == "confirmed" and on_trip["numbers"] == {} and ":" not in on_trip["detail"]
+    roster_times = {e["boarded_at"] for e in (await world.get(f"/boarding/trips/{w['trip']['id']}/roster")).json()
+                    ["entries"] if e["boarded_at"]}
+    text = json.dumps(r["analysis"])
+    assert not any(t in text for t in roster_times)
+
+
+async def test_anonymous_lateness_report_doesnt_use_the_reporters_stop(world):
+    w = await world.running_trip(n_stops=4)
+    tid, stop2 = w["trip"]["id"], w["trip"]["stops"][1]
+    reporter = await _rider(world, w, stop_index=1)
+    await world.post(f"/trips/{tid}/stops/2/arrive", {"arrived_at": world.at(stop2["scheduled_at"], 12)})
+    r = await _report(world, reporter, "lateness", "The bus was very late", tid, anonymous=True)
+    assert stop2["stop_name"] not in json.dumps(r["analysis"])
+
+
+async def test_distances_are_not_read_as_delays(world):
+    w = await world.running_trip(n_stops=3)
+    student = await _rider(world, w, 0)
+    r = await _report(world, student, "lateness", "Driver stopped 800m before my stop and I had to walk",
+                      w["trip"]["id"])
+    assert r["analysis_status"] == "done"
+    assert r["analysis"]["claims"]["claimed_delay_min"] is None
+    assert llm.rules_claims(llm.ReportKind.LATENESS, "waited 999 minutes").claimed_delay_min is None
+
+
+@pytest.mark.parametrize("text", ["Bus was 20 min late again, please keep in touch",
+                                  "The app crashed when I tried to scan", "It doesn't hurt to ask for a bigger bus",
+                                  "Everyone was fighting for seats"])
+def test_everyday_words_are_not_critical(text):
+    assert not llm.has_critical_words(text)
+    assert llm.rules_claims(llm.ReportKind.LATENESS, text).severity_hint != llm.ReportSeverity.CRITICAL
+
+
+@pytest.mark.parametrize("text", ["A man touched me on the bus", "The bus crashed into an auto", "I got hurt when it braked",
+                                  "He keeps following me after I get off", "the driver was drunk"])
+def test_real_emergencies_are_critical(text):
+    assert llm.has_critical_words(text)
+
+
+async def test_model_drafts_that_promise_or_blame_fall_back_to_the_template(world, model_on):
+    def reply_for(path, body):
+        if path == "/api/embed":
+            return {"embeddings": [[0.1, 0.2, 0.3]]}
+        if "FINDINGS" in body["messages"][1]["content"]:
+            return _chat({"summary": "Late bus.", "suggested_action": "Check timings.",
+                          "draft_reply": "Sorry! The driver was late, which is why you missed class. "
+                                         "We will make sure it doesn't happen again."})
+        return _chat({"subtype": "late", "claimed_delay_min": None, "mentioned_stop": None,
+                      "extra_checks": [], "severity_hint": "normal"})
+
+    model_on(_ollama(reply_for))
+    w = await world.running_trip(n_stops=3)
+    student = await _rider(world, w, 0)
+    r = await _report(world, student, "lateness", "bus was late", w["trip"]["id"])
+    assert r["analysis"]["steps"]["write"] == "rules"
+    assert "driver" not in r["analysis"]["draft_reply"].lower()
+
+
+async def test_rematching_a_lost_item_frees_the_first_match(world):
+    w = await world.running_trip(n_stops=3)
+    student = await _rider(world, w, 0)
+    first = (await world.post("/found-items", {"trip_id": w["trip"]["id"], "description": "blue bottle"},
+                              who=w["driver"], expect=201)).json()
+    second = (await world.post("/found-items", {"trip_id": w["trip"]["id"], "description": "blue steel bottle"},
+                               who=w["driver"], expect=201)).json()
+    r = await _report(world, student, "lost_item", "I lost my blue bottle", w["trip"]["id"])
+    await world.post(f"/reports/{r['id']}/match/{first['id']}")
+    await world.post(f"/reports/{r['id']}/match/{second['id']}")
+    items = {i["id"]: i["status"] for i in (await world.get("/found-items")).json()}
+    assert items == {first["id"]: "unclaimed", second["id"]: "matched"}
+
+
+async def test_students_cant_flood_reports(world):
+    w = await world.running_trip(n_stops=3)
+    student = await _rider(world, w, 0)
+    for _ in range(5):
+        await world.post("/reports", {"kind": "other", "description": "bus smells bad"}, who=student, expect=201)
+    r = await world.post("/reports", {"kind": "other", "description": "bus smells bad"}, who=student, expect=429)
+    assert r.json()["code"] == "rate_limited"

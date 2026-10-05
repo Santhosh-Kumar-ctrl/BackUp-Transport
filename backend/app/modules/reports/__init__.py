@@ -14,12 +14,18 @@ from app.modules.reports.router import router
 
 # One analysis at a time: the local model shares one GPU, and each run holds a DB session.
 _analysis_slot = asyncio.Semaphore(1)
+# Reports queued or being analysed in this process, so the retry loop doesn't run them twice.
+_in_flight: set[int] = set()
 
 
 async def _analyse(report_id: int) -> None:
-    async with _analysis_slot, SessionLocal() as session:
-        await agent.analyse(session, report_id)
-        await session.commit()
+    _in_flight.add(report_id)
+    try:
+        async with _analysis_slot, SessionLocal() as session:
+            await agent.analyse(session, report_id)
+            await session.commit()
+    finally:
+        _in_flight.discard(report_id)
 
 
 async def _on_report(ev: events.Event) -> None:
@@ -30,7 +36,8 @@ async def _retry_pending() -> None:
     async with SessionLocal() as session:
         ids = await service.pending_analysis(session)
     for report_id in ids:
-        await _analyse(report_id)
+        if report_id not in _in_flight:
+            await _analyse(report_id)
 
 
 async def _embed_found_item(ev: events.Event) -> None:

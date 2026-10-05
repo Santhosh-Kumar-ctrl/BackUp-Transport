@@ -101,7 +101,7 @@ still waiting downstream and pushes to their phones; dashboard pushes a refresh 
 
 ## Tests
 ```bash
-cd backend && .venv/Scripts/python -m pytest -q      # 91 API/service tests incl. acceptance
+cd backend && .venv/Scripts/python -m pytest -q      # 148 API/service tests incl. acceptance
 cd frontend && flutter analyze && flutter test
 ```
 Backend tests use the `transit_test` database created by `docker compose`.
@@ -115,6 +115,12 @@ Backend tests use the `transit_test` database created by `docker compose`.
   or hardware later). For ETA-based alerts, feed `delay_monitor.service.evaluate` with `source=gps`.
 - Push notifications (FCM): extend `notifications.service.deliver()`. `BusApproaching` and all other
   alerts then reach phones with the app closed.
+
+## Deploying
+[docs/DEPLOY.md](docs/DEPLOY.md): one VM with Docker (Postgres, the API as **one** process, Caddy for
+HTTPS and the web app), backups, updates and the Android release build. CI runs the backend tests,
+`alembic check`, `flutter analyze`/`test` and the API image build on every push
+([.github/workflows/ci.yml](.github/workflows/ci.yml)).
 
 ## Ports
 | Service | Port |

@@ -60,6 +60,18 @@ The student's text goes to the model as quoted data with an instruction never to
 model's output is constrained to a JSON schema with no field that can change anything, and its
 only effects are a summary, a draft and extra *checks* (which only read data).
 
+## Anonymous reports
+The admin view hides the reporter's name, roll no **and allocated stop**, and the analysis never
+contains anything that could be matched against a roster: the boarding check says "The reporter
+boarded this trip" with no time, and stop checks use only a stop the student named.
+
+## Guard rails on the text
+- Urgent (critical) words are matched as whole words and phrases (`llm.CRITICAL_PATTERNS`):
+  "keep in touch" or "the app crashed" don't page every admin; "touched me" or "crashed into" do.
+- Delays are read in minutes only ("800m" is a distance) and capped at 600 min.
+- A model draft reply that mentions the bus staff, makes promises or claims causes
+  (`llm.reply_breaks_rules`) is replaced by the template, like one quoting numbers not in the records.
+
 ## Data model
 | Table | Key columns |
 |---|---|
@@ -71,7 +83,7 @@ only effects are a summary, a draft and extra *checks* (which only read data).
 | Method | Path | Role | Purpose |
 |---|---|---|---|
 | GET | `/reports/trip-options` | student | their trips from the last 3 days (boarded, or on their route), for the picker |
-| POST | `/reports` | student | file a report `{kind, description, trip_id?, anonymous}` |
+| POST | `/reports` | student | file a report `{kind, description, trip_id?, anonymous}`. 429 `rate_limited` after `REPORTS_PER_HOUR` (5) |
 | GET | `/reports/mine` | student | their reports |
 | GET | `/reports/{id}` | student (own), admin | student view has no analysis/severity; admin view hides name and roll no when anonymous |
 | POST | `/reports/{id}/messages` | student (own) | follow-up; reopens a replied report |
@@ -79,7 +91,7 @@ only effects are a summary, a draft and extra *checks* (which only read data).
 | POST | `/reports/{id}/reply` | admin | send a reply (status → replied) |
 | POST | `/reports/{id}/close` | admin | `{note?}` |
 | POST | `/reports/{id}/reanalyse` | admin | run the agent again |
-| POST | `/reports/{id}/match/{found_item_id}` | admin | lost-item reports only |
+| POST | `/reports/{id}/match/{found_item_id}` | admin | lost-item reports only; re-matching puts the previous item back to `unclaimed` |
 | POST | `/found-items` | driver (own trip, running or ended today), admin | `{trip_id?, description}` |
 | GET | `/found-items?status` | driver (own), admin | |
 | PATCH | `/found-items/{id}` | admin | `{status}` e.g. returned |
