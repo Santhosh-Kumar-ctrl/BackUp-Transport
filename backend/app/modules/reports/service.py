@@ -24,6 +24,7 @@ from app.modules.allocation import service as alloc_service
 from app.modules.auth import service as auth_service
 from app.modules.boarding.models import Boarding
 from app.modules.master_data import service as md_service
+from app.modules.master_data.models import Bus, Route, Stop
 from app.modules.reports.models import (
     AnalysisStatus,
     FoundItem,
@@ -203,6 +204,11 @@ async def match_found_item(session: AsyncSession, report_id: int, item_id: int, 
     item = await get_found_item(session, item_id)
     if item.status != FoundItemStatus.UNCLAIMED:
         raise InvalidState(f"That item is already {item.status.value}", code="item_taken")
+    if report.matched_found_item_id and report.matched_found_item_id != item.id:
+        # Re-matched to another item: the first one goes back on the shelf.
+        previous = await session.get(FoundItem, report.matched_found_item_id)
+        if previous and previous.status == FoundItemStatus.MATCHED:
+            previous.status = FoundItemStatus.UNCLAIMED
     item.status = FoundItemStatus.MATCHED
     report.matched_found_item_id = item.id
     await session.flush()
@@ -228,10 +234,37 @@ async def _messages(session: AsyncSession, report_id: int) -> list[MessageOut]:
     return [MessageOut(id=m.id, from_staff=m.from_staff, body=m.body, created_at=m.created_at) for m in rows]
 
 
-async def _base(session: AsyncSession, r: Report, with_messages: bool) -> dict:
-    trip = await trips_service.get_trip(session, r.trip_id) if r.trip_id else None
-    route = await md_service.get_route(session, r.route_id) if r.route_id else None
-    stop = await md_service.get_stop(session, r.stop_id) if r.stop_id else None
+class _Lookups:
+    """Trips, routes, stops, buses and students for a list of reports, fetched once each."""
+
+    def __init__(self) -> None:
+        self.trips: dict[int, Trip] = {}
+        self.routes: dict[int, Route] = {}
+        self.stops: dict[int, Stop] = {}
+        self.buses: dict[int, Bus] = {}
+        self.students: dict = {}
+
+    @classmethod
+    async def load(cls, session: AsyncSession, reports: list[Report], *, people: bool) -> "_Lookups":
+        lk = cls()
+
+        async def by_id(model, ids):
+            ids = {i for i in ids if i}
+            return {o.id: o for o in await session.scalars(select(model).where(model.id.in_(ids)))} if ids else {}
+
+        lk.trips = await by_id(Trip, (r.trip_id for r in reports))
+        lk.routes = await by_id(Route, (r.route_id for r in reports))
+        lk.stops = await by_id(Stop, (r.stop_id for r in reports if not r.anonymous))
+        if people:
+            lk.buses = await by_id(Bus, (t.bus_id for t in lk.trips.values()))
+            lk.students = await auth_service.briefs(session, [r.student_id for r in reports if not r.anonymous])
+        return lk
+
+
+async def _base(session: AsyncSession, r: Report, lk: _Lookups, with_messages: bool) -> dict:
+    trip, route = lk.trips.get(r.trip_id), lk.routes.get(r.route_id)
+    # An anonymous report never shows the reporter's allocated stop: it narrows down who sent it.
+    stop = None if r.anonymous else lk.stops.get(r.stop_id)
     return {
         "id": r.id, "kind": r.kind, "description": r.description, "status": r.status, "anonymous": r.anonymous,
         "trip_id": r.trip_id, "service_date": trip.service_date if trip else None,
@@ -240,31 +273,44 @@ async def _base(session: AsyncSession, r: Report, with_messages: bool) -> dict:
         "stop_name": stop.name if stop else None, "created_at": r.created_at, "updated_at": r.updated_at,
         "resolution_note": r.resolution_note,
         "messages": await _messages(session, r.id) if with_messages else [],
-        "_trip": trip,
     }
 
 
+async def student_views(
+    session: AsyncSession, reports: list[Report], *, with_messages: bool = False
+) -> list[ReportOut]:
+    lk = await _Lookups.load(session, reports, people=False)
+    return [ReportOut(**await _base(session, r, lk, with_messages)) for r in reports]
+
+
 async def student_view(session: AsyncSession, r: Report, *, with_messages: bool = False) -> ReportOut:
-    data = await _base(session, r, with_messages)
-    data.pop("_trip")
-    return ReportOut(**data)
+    return (await student_views(session, [r], with_messages=with_messages))[0]
+
+
+async def admin_views(
+    session: AsyncSession, reports: list[Report], *, with_messages: bool = False
+) -> list[ReportAdminOut]:
+    lk = await _Lookups.load(session, reports, people=True)
+    out = []
+    for r in reports:
+        trip = lk.trips.get(r.trip_id)
+        bus = lk.buses.get(trip.bus_id) if trip else None
+        who = None if r.anonymous else lk.students.get(r.student_id)
+        out.append(ReportAdminOut(
+            **await _base(session, r, lk, with_messages),
+            student_id=who.id if who else None, student_name=who.full_name if who else None,
+            roll_no=who.roll_no if who else None,
+            bus_registration_no=bus.registration_no if bus else None,
+            severity=r.severity, analysis_status=r.analysis_status,
+            analysis=Analysis.model_validate(r.analysis) if r.analysis else None,
+            analysed_by=r.analysed_by, analysed_at=r.analysed_at,
+            matched_found_item_id=r.matched_found_item_id, closed_at=r.closed_at,
+        ))
+    return out
 
 
 async def admin_view(session: AsyncSession, r: Report, *, with_messages: bool = False) -> ReportAdminOut:
-    data = await _base(session, r, with_messages)
-    trip = data.pop("_trip")
-    bus = await md_service.get_bus(session, trip.bus_id) if trip else None
-    who = None if r.anonymous else (await auth_service.briefs(session, [r.student_id])).get(r.student_id)
-    return ReportAdminOut(
-        **data,
-        student_id=who.id if who else None, student_name=who.full_name if who else None,
-        roll_no=who.roll_no if who else None,
-        bus_registration_no=bus.registration_no if bus else None,
-        severity=r.severity, analysis_status=r.analysis_status,
-        analysis=Analysis.model_validate(r.analysis) if r.analysis else None,
-        analysed_by=r.analysed_by, analysed_at=r.analysed_at,
-        matched_found_item_id=r.matched_found_item_id, closed_at=r.closed_at,
-    )
+    return (await admin_views(session, [r], with_messages=with_messages))[0]
 
 
 # ---------------- Found items ----------------

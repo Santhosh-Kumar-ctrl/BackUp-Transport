@@ -1,5 +1,17 @@
 # reports: dev log
 
+## 2026-10-04: Review fixes (Review.md)
+**Fixed**
+- Anonymous reports could be traced back: the analysis gave the exact boarding time, which the
+  trip roster maps to one student (B4). Now there is no time and no allocated stop.
+- "Driver stopped 800m away" failed the whole analysis (800 read as minutes > 600) (H4).
+- "Please keep in touch" made a lateness report CRITICAL (the "touch" substring) (H4).
+- Model drafts guessed causes, promised outcomes or named the driver. A guard now rejects them, and
+  the prompt gives a fixed closing sentence instead of quoting what not to say (quoting it primed
+  the model to use it).
+- Report rate limit (M3); re-matching frees the first item (L1); the retry loop skips reports
+  already being analysed (L2); `GET /reports` loads lookups once for the whole list (H3).
+
 ## 2026-10-02: Guarding the model's drafts
 **Changed**
 - Every number and time in the model's write-up must appear in the report or the findings;

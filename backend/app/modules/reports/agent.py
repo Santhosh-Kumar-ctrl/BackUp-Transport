@@ -26,9 +26,7 @@ def _max(a: ReportSeverity, b: ReportSeverity) -> ReportSeverity:
 
 def severity_floor(kind: ReportKind, text: str, claims: Claims, findings: list[Finding]) -> ReportSeverity:
     """The lowest urgency the rules allow. The model can raise it (up to high), never lower it."""
-    low = text.lower()
-    if kind == ReportKind.SAFETY or claims.subtype in ("harassment", "accident") \
-            or any(w in low for w in llm.CRITICAL_WORDS):
+    if kind == ReportKind.SAFETY or claims.subtype in ("harassment", "accident") or llm.has_critical_words(text):
         return ReportSeverity.CRITICAL
     verdicts = {f.check: f.verdict for f in findings}
     if verdicts.get("speed") == "confirmed" or verdicts.get("trip_ran") == "confirmed":
