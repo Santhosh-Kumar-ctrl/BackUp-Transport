@@ -31,4 +31,12 @@ frontend/ios/Pods/
 Thumbs.db
 .vscode/
 
-Claude outputs/
+# Production secrets and Android release signing
+deploy/.env
+frontend/android/key.properties
+*.jks
+*.keystore
+
+#MDs
+UI.md
+Review.md

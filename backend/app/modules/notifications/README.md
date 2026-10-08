@@ -42,6 +42,9 @@ Severity: `info` / `warning` / `critical` (delays ≥ 15 min and over-capacity a
 
 WebSocket: each stored notification is pushed as `{"type":"notification","data":{…}}` to the user.
 
+Housekeeping: read notifications older than `NOTIFICATION_RETENTION_DAYS` (180) are deleted
+(job `notification-retention`, every 6 h). Unread ones are kept.
+
 ## Consumes
 All events in `service.HANDLED_EVENTS`.
 

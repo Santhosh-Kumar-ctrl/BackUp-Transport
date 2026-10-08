@@ -50,7 +50,7 @@ step 2 running and seeded data from step 1.
 ```powershell
 cd backend
 .venv\Scripts\activate
-python -m scripts.simulate_bus
+python -m scripts.simulate_bus --speedup 5 --interval 2 --end
 ```
 This signs in as driver1, starts a route 14 pickup trip departing now, and drives it along the
 stops at 10x speed, sending a GPS position every 2 seconds. As it goes:
@@ -70,6 +70,10 @@ Tidel Park -> Perungudi (3.2 km)
   12.96110,80.24130     0 km/h  ARRIVED Perungudi
 ```
 Without `--end` the trip stays running at the last stop, so you can look around in the app.
+
+> `scripts.demo_scenario` and `scripts.simulate_reports` send made-up arrival times as the admin,
+> which needs `ALLOW_SIMULATION=true` in `backend/.env` (it's in `.env.example`; production keeps it
+> off). Without it they stop with `403 ... simulation_off`.
 End it from the driver app, or run the simulator with `--end` next time.
 
 ### What you should see as student4
@@ -197,7 +201,7 @@ likely matches; **Match** tells the student to collect the item.
 ## 6. Automated tests
 ```powershell
 cd backend
-.venv\Scripts\python -m pytest -q                        # all 91 backend tests
+.venv\Scripts\python -m pytest -q                        # all 148 backend tests
 .venv\Scripts\python -m pytest app/modules/tracking -q   # just the tracking tests
 
 cd ..\frontend
@@ -233,6 +237,7 @@ your location.
 | Problem | Fix |
 |---|---|
 | `docker compose up` fails to connect | Start Docker Desktop and wait until it says it's running |
+| Seed says "The database is at migration …", or anything fails with `column … does not exist` | The code has a newer migration than your database (after a `git pull`): run `alembic upgrade head` in `backend/`, then restart the API |
 | Map says "No map for this route yet" | The stops have no coordinates: re-seed with `--reset` (see step 1) |
 | Simulator exits with "Can't sign in" | The API isn't running, or the database isn't seeded: run `python -m scripts.seed` |
 | Simulator says "This route's stops have no coordinates" | The database was seeded before live tracking: re-seed with `--reset` (see step 1) |

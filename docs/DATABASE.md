@@ -152,7 +152,11 @@ for the history module, the audit trail, and the feed Team B's agent reads.
 | `occurred_at` | timestamptz | ✓ | `now()` | |
 
 Indexes: `ix_domain_events_type (type)`, `ix_domain_events_aggregate (aggregate_type, aggregate_id)`,
-`ix_domain_events_occurred_at (occurred_at)`.
+`ix_domain_events_occurred_at (occurred_at)`, and the expression indexes
+`ix_domain_events_payload_trip_id ((payload ->> 'trip_id'))` and
+`ix_domain_events_payload_route_id ((payload ->> 'route_id'))` for trip timelines and route history
+(query them through `events.payload_text(key)` so the key is inlined and the index matches).
+Kept for good: this is the history.
 
 *Why no FKs?* The log must survive deletions of the things it describes, and one column
 (`aggregate_id`) points at different tables depending on `aggregate_type`.
@@ -182,6 +186,7 @@ Example payload (`TripDelayed`):
 | `phone` | varchar(20) | | | |
 | `role` | varchar(32) | ✓ | | enum, indexed (`ix_users_role`) |
 | `is_active` | boolean | ✓ | `true` | deactivated users can't log in or refresh |
+| `token_version` | integer | ✓ | `0` | in every token as `ver`; bumped on password change or deactivation, which ends all sessions |
 | `created_at`, `updated_at` | timestamptz | ✓ | `now()` | |
 
 #### `student_profiles` (1:1 with a `student` user)
@@ -283,6 +288,10 @@ Constraints: `uq_route_stops_route_seq (route_id, sequence)` **DEFERRABLE INITIA
 
 Constraint: `uq_trips_schedule_date (schedule_id, service_date)`, so generating trips twice can't
 duplicate them.
+
+Partial unique indexes `uq_trips_one_running_per_driver (driver_id)` and
+`uq_trips_one_running_per_bus (bus_id)`, both `WHERE status = 'in_progress'`: a driver drives, and a
+bus runs, at most one trip at a time, even when two "start" requests race.
 
 Copies of route/bus/driver/direction are deliberate: a trip records what *actually* ran even if the
 schedule is later edited.
@@ -399,7 +408,8 @@ table is also the de-duplication memory for alerts.
 | `read_at` | timestamptz | | | null = unread |
 | `created_at` | timestamptz | ✓ | `now()` | |
 
-Index: `ix_notifications_user_created (user_id, created_at)`, the inbox query.
+Index: `ix_notifications_user_created (user_id, created_at)`, the inbox query. Read notifications
+older than `NOTIFICATION_RETENTION_DAYS` (180) are deleted by the `notification-retention` job.
 
 ---
 
@@ -418,7 +428,8 @@ Index: `ix_notifications_user_created (user_id, created_at)`, the inbox query.
 | `recorded_at` | timestamptz | ✓ | when the phone took the fix (future → now); indexed |
 
 Index: `ix_bus_positions_trip_recorded (trip_id, recorded_at)` for the latest fix and a trip's track.
-About 720 rows per bus per running hour at one fix per 5 s; prune old trips when it matters.
+About 720 rows per bus per running hour at one fix per 5 s. Fixes older than
+`POSITION_RETENTION_DAYS` (90) are deleted by the `position-retention` job.
 
 #### `approach_alerts`: "bus is 2 km away" already announced
 | Column | Type | Null | Default | Notes |
@@ -574,6 +585,7 @@ thousand rows.
 | `4f1c2d7a9b3e` | tracking: `bus_positions` gains `heading_deg`, `accuracy_m`, `(trip_id, recorded_at)` index; new `approach_alerts` |
 | `9d3e5b7c1a2f` | auth: `security` and `parent` roles removed (their accounts deleted); `student_profiles.parent_user_id` dropped |
 | `bbb63096dc6b` | reports: new `reports`, `report_messages`, `found_items` |
+| `c7a1e4f2b9d6` | review fixes: one running trip per driver/bus (partial unique indexes; extra running trips are completed first), `users.token_version`, `domain_events` payload expression indexes |
 
 Workflow:
 ```bash

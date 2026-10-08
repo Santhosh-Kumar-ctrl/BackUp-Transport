@@ -74,9 +74,11 @@ async def my_trips(service_date: date | None = None, p: Principal = Depends(requ
 
 
 @router.get("/trips/{trip_id}", response_model=TripDetail)
-async def get_trip(trip_id: int, _: Principal = Depends(current_principal),
+async def get_trip(trip_id: int, p: Principal = Depends(current_principal),
                    session: AsyncSession = Depends(get_session)):
-    return await service.trip_detail(session, await service.get_trip(session, trip_id))
+    trip = await service.get_trip(session, trip_id)
+    await service.ensure_can_view(session, p, trip)
+    return await service.trip_detail(session, trip)
 
 
 @router.post("/trips/{trip_id}/start", response_model=TripDetail)

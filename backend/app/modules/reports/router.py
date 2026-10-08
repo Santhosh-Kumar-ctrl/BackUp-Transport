@@ -1,8 +1,10 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.core.db import get_session
 from app.core.deps import Principal, require_roles
+from app.core.ratelimit import RateLimiter
 from app.core.roles import Role
 from app.modules.reports import service
 from app.modules.reports.models import FoundItemStatus, ReportKind, ReportSeverity, ReportStatus
@@ -23,6 +25,11 @@ student = require_roles(Role.STUDENT)
 admin_only = require_roles(Role.ADMIN)
 staff = require_roles(Role.ADMIN, Role.DRIVER)
 
+# Each report queues a model run and alerts every admin, so a student can't flood either.
+report_limit = RateLimiter("reports", limit=settings.reports_per_hour, window_seconds=3600,
+                           message="You've sent several reports in the last hour. Add to an earlier report "
+                                   "or try again later.")
+
 
 # ---------------- Student ----------------
 @router.get("/reports/trip-options", response_model=list[TripOption])
@@ -32,6 +39,7 @@ async def trip_options(p: Principal = Depends(student), session: AsyncSession = 
 
 @router.post("/reports", response_model=ReportOut, status_code=201)
 async def create_report(body: ReportIn, p: Principal = Depends(student), session: AsyncSession = Depends(get_session)):
+    report_limit.hit(str(p.id))
     report = await service.create_report(session, p, body)
     await session.commit()
     return await service.student_view(session, report)
@@ -39,7 +47,7 @@ async def create_report(body: ReportIn, p: Principal = Depends(student), session
 
 @router.get("/reports/mine", response_model=list[ReportOut])
 async def my_reports(p: Principal = Depends(student), session: AsyncSession = Depends(get_session)):
-    return [await service.student_view(session, r) for r in await service.list_mine(session, p.id)]
+    return await service.student_views(session, await service.list_mine(session, p.id))
 
 
 @router.post("/reports/{report_id}/messages", response_model=ReportOut, status_code=201)
@@ -69,7 +77,7 @@ async def list_reports(status: ReportStatus | None = None, kind: ReportKind | No
                        severity: ReportSeverity | None = None, _: Principal = Depends(admin_only),
                        session: AsyncSession = Depends(get_session)):
     reports = await service.list_reports(session, status=status, kind=kind, severity=severity)
-    return [await service.admin_view(session, r) for r in reports]
+    return await service.admin_views(session, reports)
 
 
 @router.post("/reports/{report_id}/reply", response_model=ReportAdminOut)
